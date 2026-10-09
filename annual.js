@@ -21,7 +21,9 @@ function beginYear(state, random = Math.random) {
 }
 function finishAnnualChoice(state, event, choice) {
   if (!state.player.alive || state.resolved || state.currentEventId !== event.id || state.annual.eventIds.includes(event.id) || state.annual.processedCount >= MAX_EVENTS_PER_YEAR) throw new Error("本年度事件不能重复或超出上限");
-  if (!eligible(event, state.player) || (state.annual.processedCount > 0 && event.isMajorNode !== true)) throw new Error("事件不再符合当前状态，或不是可追加的重要节点");
+  // 只处理已展示的当前卡片。更新前已展示的节点取消Major后仍可完成；
+  // 新追加事件只能由continueOrGrow从pendingMajorNodes选出，仍严格限制为Major。
+  if (!eligible(event, state.player)) throw new Error("事件不再符合当前状态");
   if (!event.choices.includes(choice)) throw new Error("选择不属于当前事件");
   applyChoice(state.player, event, choice);
   state.annual.eventIds.push(event.id);
@@ -54,7 +56,7 @@ function validAnnualProgress(state) {
     if (state.resolved) { if (a.eventIds.at(-1) !== state.currentEventId) return false; }
     else {
       if (a.eventIds.includes(state.currentEventId) || a.processedCount >= MAX_EVENTS_PER_YEAR) return false;
-      if (a.processedCount > 0 && !EVENTS.some(e => e.id === state.currentEventId && e.isMajorNode === true)) return false;
+      // 已展示卡片的Major标记可能随内容修正改变；存在性与条件由validSave检查。
     }
   }
   return true;

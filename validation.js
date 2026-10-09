@@ -29,18 +29,23 @@ function checkEvents(events, maxEventsPerYear = MAX_EVENTS_PER_YEAR) {
     const c = e.conditions;
     if (!isRecord(c)) error(`${path}.conditions`, "必须是对象");
     else {
-      const allowed = ["minAge", "maxAge", "lifeStages", "tagsAll", "tagsNone", "historyEventIds", "historyChoicesAll", "historyChoicesNone", "states", "stats"];
+      const allowed = ["minAge", "maxAge", "lifeStages", "tagsAll", "tagsNone", "historyEventIds", "historyChoicesAll", "historyChoicesAny", "historyChoicesNone", "states", "statesNone", "stats"];
       for (const key of Object.keys(c)) if (!allowed.includes(key)) error(`${path}.conditions.${key}`, key === "requiredTags" ? "请改用 tagsAll；当前引擎不支持 requiredTags" : "不支持的条件字段，请检查拼写");
       for (const key of ["minAge", "maxAge"]) if (key in c && !isAge(c[key])) error(`${path}.conditions.${key}`, "必须是非负整数年龄");
       if (isAge(c.minAge) && isAge(c.maxAge) && c.minAge > c.maxAge) error(`${path}.conditions`, "minAge 不能大于 maxAge");
       for (const key of ["lifeStages", "tagsAll", "tagsNone", "historyEventIds"]) if (key in c && !isTextList(c[key])) error(`${path}.conditions.${key}`, "必须是文字数组");
       if (isTextList(c.lifeStages) && c.lifeStages.some(s => !STAGES.some(item => item[1] === s))) error(`${path}.conditions.lifeStages`, "包含未知人生阶段");
       if (isTextList(c.tagsAll) && isTextList(c.tagsNone) && c.tagsAll.some(t => c.tagsNone.includes(t))) error(`${path}.conditions`, "同一标签不能同时要求存在和不存在");
-      for (const key of ["historyChoicesAll", "historyChoicesNone"]) if (key in c) {
+      for (const key of ["historyChoicesAll", "historyChoicesAny", "historyChoicesNone"]) if (key in c) {
         if (!Array.isArray(c[key]) || !c[key].every(ref => isRecord(ref) && Object.keys(ref).every(k => ["eventId", "choiceId"].includes(k)) && isText(ref.eventId) && isText(ref.choiceId))) error(`${path}.conditions.${key}`, "必须是 { eventId, choiceId } 的数组");
+        else if (key === "historyChoicesAny" && !c[key].length) error(`${path}.conditions.${key}`, "至少需要一个历史选择，否则事件永远不能触发");
       }
       if (Array.isArray(c.historyChoicesAll) && Array.isArray(c.historyChoicesNone) && c.historyChoicesAll.some(a => isRecord(a) && c.historyChoicesNone.some(b => b?.eventId === a.eventId && b?.choiceId === a.choiceId))) error(`${path}.conditions`, "同一历史选择不能同时要求和排除");
       if ("states" in c) stateFormatErrors(c.states, "conditions").forEach(message => error(`${path}.conditions.states`, message));
+      if ("statesNone" in c) {
+        stateFormatErrors(c.statesNone, "conditions").forEach(message => error(`${path}.conditions.statesNone`, message));
+        if (isRecord(c.statesNone) && !Object.keys(c.statesNone).length) error(`${path}.conditions.statesNone`, "不能为空，否则会排除所有玩家");
+      }
       if ("stats" in c) {
         if (!isRecord(c.stats)) error(`${path}.conditions.stats`, "必须是属性范围对象");
         else for (const [key, range] of Object.entries(c.stats)) {
@@ -68,7 +73,7 @@ function checkEvents(events, maxEventsPerYear = MAX_EVENTS_PER_YEAR) {
   for (const e of events) if (isTextList(e?.conditions?.historyEventIds)) {
     for (const id of e.conditions.historyEventIds) if (!ids.has(id)) error(`事件 (${e.id}).conditions.historyEventIds`, `找不到事件 ${id}`);
   }
-  for (const e of events) for (const key of ["historyChoicesAll", "historyChoicesNone"]) {
+  for (const e of events) for (const key of ["historyChoicesAll", "historyChoicesAny", "historyChoicesNone"]) {
     if (!Array.isArray(e?.conditions?.[key])) continue;
     for (const ref of e.conditions[key]) {
       if (!isRecord(ref)) continue;
@@ -77,13 +82,15 @@ function checkEvents(events, maxEventsPerYear = MAX_EVENTS_PER_YEAR) {
       else if (!Array.isArray(referenced.choices) || !referenced.choices.some(choice => choice?.id === ref.choiceId)) error(`事件 (${e.id}).conditions.${key}`, `事件 ${ref.eventId} 中找不到选择 ${ref.choiceId}`);
     }
   }
-  // 保守检查年龄重叠；重要节点可以同年处理，但数量和截止年龄仍须核对。
+  // 人生中的重大事件 ≠ isMajorNode:true：仅用于漏掉会导致状态不合理、缺失关键阶段、
+  // 永久断裂重要剧情链，或确有不可替代时间窗口的节点。优先级高不意味着可以同年追加。
+  // 保守审查年龄重叠，不分析条件互斥；提醒并不等于错误，不以警告归零为目标。
   const milestones = events.filter(e => isRecord(e) && (e.category === "milestone" || e.isMajorNode === true) && isRecord(e.conditions));
   for (let i = 0; i < milestones.length; i++) for (let j = i + 1; j < milestones.length; j++) {
     const a = milestones[i], b = milestones[j];
     const start = Math.max(a.conditions.minAge ?? 0, b.conditions.minAge ?? 0);
     const end = Math.min(a.conditions.maxAge ?? Infinity, b.conditions.maxAge ?? Infinity);
-    if (start <= end) warnings.push(`重要/必然事件 ${a.id} 与 ${b.id} 在 ${start}～${end === Infinity ? "不限" : end} 岁可能冲突：只有 isMajorNode:true 可追加，每年最多${maxEventsPerYear}个事件，请核对条件和截止年龄。`);
+    if (start <= end) warnings.push(`开发审查提醒（不一定是错误）：重要/必然事件 ${a.id} 与 ${b.id} 在 ${start}～${end === Infinity ? "不限" : end} 岁窗口重叠；其他条件可能互斥。只有 isMajorNode:true 可追加，每年最多${maxEventsPerYear}个事件，请人工核对条件、后续依赖和截止年龄。`);
   }
   const fixedAgeNodes = new Map();
   for (const event of milestones) if (event.isMajorNode === true && isAge(event.conditions.minAge) && event.conditions.minAge === event.conditions.maxAge) {

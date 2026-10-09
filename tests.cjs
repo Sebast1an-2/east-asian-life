@@ -11,12 +11,13 @@ class Element {
 const nodes = new Map();
 const storage = new Map();
 // 原有回归测试保持仅加载首批 8 个事件，后面单独验证扩充后的完整库。
-function context(beforeApp = 'EVENTS.splice(8);', logger = console) {
+function context(beforeApp = 'EVENTS.splice(8);', logger = console, includeYoung = false) {
   const ctx = vm.createContext({ console: logger, document: {
     getElementById(id) { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); },
     createElement() { return new Element(); }
   }, localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) }, confirm: () => true });
-  for (const file of ['player.js', 'life-state.js', 'events.js', 'engine.js', 'annual.js', 'validation.js', 'app.js']) {
+  const files = ['player.js', 'life-state.js', 'events.js', ...(includeYoung ? ['events-young.js'] : []), 'engine.js', 'annual.js', 'validation.js', 'app.js'];
+  for (const file of files) {
     if (file === 'app.js' && beforeApp) vm.runInContext(beforeApp, ctx);
     vm.runInContext(fs.readFileSync(file, 'utf8'), ctx, { filename: file });
   }
@@ -169,7 +170,7 @@ assert.equal(run('state'), null);
 assert.ok(reported.length);
 ctx = context(`EVENTS.push({...EVENTS[0], id: 'other_birth'});`, {error() {}, warn: x => reported.push(x)});
 assert.equal(nodes.get('start').disabled, false);
-assert.match(nodes.get('data-diagnostics').textContent, /可能冲突/);
+assert.match(nodes.get('data-diagnostics').textContent, /开发审查提醒（不一定是错误）/);
 console.log('PASS: invalid event fields, milestone conflicts, both choice paths, valid old saves, malformed-save recovery, preserved storage and visible startup diagnostics.');
 
 storage.clear();
@@ -254,7 +255,7 @@ run(`{
   const p = createPlayer(); p.age = 23; p.lifeStage = stageFor(23)[1];
   const job = EVENTS.find(e => e.id === 'first_job');
   applyChoice(p, job, job.choices[0]);
-  expect(p.work.status === 'employed' && p.work.startYear === 2023 && p.work.workStyle === 'stable', '工作状态或年份错误');
+  expect(p.work.status === 'employed' && p.work.startYear === 2023 && p.work.workStyle === 'balanced', '工作状态或年份错误');
   expect(p.history[0].stateChanges.work.before.status === 'not_working' && p.history[0].stateChanges.work.after.status === 'employed', '就业历史缺少前后状态');
   let changeNumber = 0;
   const change = patch => applyChoice(p, {...job, id: 'state_test_' + ++changeNumber}, {...job.choices[0], effects: {}, addTags: [], removeTags: [], stateChanges: patch});
@@ -560,3 +561,30 @@ assert.equal(run('state.player.history.filter(h => h.age === 23 && h.eventId).le
 assert.equal(fullLifeSteps, 81);
 assert.equal(run('validSave(state)'), true);
 console.log('PASS: complete age 0-80 UI life with an additional same-year node; one extra click and no extra age increment.');
+// 完整50个事件的页面绑定、选择前后刷新和年度上限。
+storage.clear();
+const youthLogger = {error() {}, warn() {}};
+ctx = context('', youthLogger, true);
+assert.equal(run('EVENTS.length'), 50);
+assert.equal(run('eventReport.errors.length'), 0);
+nodes.get('start').onclick();
+let youthUISteps = 0;
+while (run('state.player.alive')) {
+  if (nodes.get('choices').children.length) {
+    ctx = context('', youthLogger, true);
+    nodes.get('choices').children[0].onclick();
+    const savedLifeStates = run('JSON.stringify([state.player.work,state.player.relationship,state.player.child,state.player.housing])');
+    ctx = context('', youthLogger, true);
+    assert.equal(run('JSON.stringify([state.player.work,state.player.relationship,state.player.child,state.player.housing])'), savedLifeStates);
+  }
+  assert.equal(run('validSave(state)'), true);
+  assert.ok(run('state.annual.processedCount <= 3'));
+  nodes.get('grow').onclick();
+  assert.ok(++youthUISteps <= 240);
+}
+assert.equal(run('state.player.age'), 80);
+// 随机完整人生可以保持单身；这里检查恢复与合法状态，不要求所有人生结婚。
+assert.ok(['single', 'dating', 'married'].includes(run('state.player.relationship.status')));
+assert.equal(run('state.player.child.hasChild'), false);
+console.log('PASS: full 50-event UI life, choice reloads, relationship/work state and annual limit.');
+require('./youth-tests.cjs');

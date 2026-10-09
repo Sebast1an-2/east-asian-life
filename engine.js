@@ -13,8 +13,10 @@ function eligible(event, player) {
   if (c.historyEventIds && !c.historyEventIds.every(id => player.history.some(item => item.eventId === id))) return false;
   const chosen = ref => player.history.some(item => item.eventId === ref.eventId && item.choiceId === ref.choiceId);
   if (c.historyChoicesAll && !c.historyChoicesAll.every(chosen)) return false;
+  if (c.historyChoicesAny && !c.historyChoicesAny.some(chosen)) return false;
   if (c.historyChoicesNone && c.historyChoicesNone.some(chosen)) return false;
   if (c.states && !matchesLifeStates(player, c.states)) return false;
+  if (c.statesNone && matchesLifeStates(player, c.statesNone)) return false;
   return Object.entries(c.stats || {}).every(([key, range]) =>
     (range.min === undefined || player[key] >= range.min) &&
     (range.max === undefined || player[key] <= range.max));

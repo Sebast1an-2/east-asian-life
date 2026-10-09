@@ -1,7 +1,7 @@
 // 当前情况单独存放；过去的经历仍保存在 History 中。
 const SAVE_VERSION = 3;
 const LIFE_STATE_FIELDS = {
-  work: { status: ["not_working", "employed", "unemployed", "retired"], careerType: "textOrNull", level: "level", workStyle: [null, "stable", "high_pressure", "flexible"], startYear: "yearOrNull" },
+  work: { status: ["not_working", "employed", "unemployed", "retired"], careerType: "textOrNull", level: "level", workStyle: [null, "stable", "balanced", "high_pressure", "flexible"], startYear: "yearOrNull" },
   relationship: { status: ["single", "dating", "married"], startYear: "yearOrNull" },
   child: { hasChild: "boolean", birthYear: "yearOrNull" },
   housing: { status: ["with_family", "renting", "owns_home"] }
@@ -90,8 +90,15 @@ function legacyStateDefaults(player) {
 function upgradeSave(data) {
   if (!isRecord(data) || ![1, 2, SAVE_VERSION].includes(data.version)) throw new Error("不支持的存档版本");
   if (data.version === SAVE_VERSION) {
-    if (!validSave(data)) throw new Error("存档无效");
-    return data;
+    if (validSave(data)) return data;
+    // 内容修正可能让已展示的普通讨论不再符合条件。只有其余存档完整合法时，
+    // 撤下这张尚未选择的旧卡片；保留人生状态、历史和年度次数，不重抽普通事件。
+    const event = EVENTS.find(e => e.id === data.currentEventId);
+    if (event && event.isMajorNode !== true && data.resolved === false && data.result === "" && data.player?.alive === true) {
+      const restored = {...data, currentEventId: null};
+      if (validSave(restored) && !eligible(event, data.player)) return restored;
+    }
+    throw new Error("存档无效");
   }
   // 先验证原内容，再补缺失字段；不根据年龄、身份或标签猜测经历。
   if (!validSave(data)) throw new Error("旧存档无效");

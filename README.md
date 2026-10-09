@@ -1,4 +1,4 @@
-# 东亚小孩的一生 · V0.1
+# 东亚小孩的一生 · V0.2 开发中
 
 ## 运行
 
@@ -17,6 +17,9 @@
 - `ANNUAL_GUIDE.md`：年度规则、刷新恢复和存档升级说明。
 - `TRAJECTORY_GUIDE.md`：新增历史选择条件、状态格式和存档升级说明。
 - `events.js`：28 个事件（原有 8 个和新增 20 个），修改剧情先看这里。
+- `events-young.js`：阶段3新增22个青年候选事件，总计50个。
+- `YOUNG_CATALOG.md`：青年事件清单、三条事件链、回声与路线覆盖检查。
+- `youth-tests.cjs`：青年路径测试，已由 `node tests.cjs` 自动调用。
 - `EVENT_CATALOG.md`：按阶段整理的事件清单、前置条件和跨年龄事件链。
 - `engine.js`：事件筛选、排序、加权随机、冷却、属性变化和 History 记录。
 - `validation.js`：事件数据检查、必然节点冲突警告和存档格式检查。
@@ -39,9 +42,17 @@
 复制 `events.js` 中一个事件，使用新的事件 id 和 choice id。
 conditions 支持 minAge/maxAge、lifeStages、tagsAll、tagsNone、historyEventIds，
 以及 stats（例如 `stats: { stress: { min: 50 } }`）。
+historyChoicesAll 要求全部指定历史选择，historyChoicesAny 要求至少做过其中一个，
+historyChoicesNone 排除指定历史选择；每项都是 `{eventId, choiceId}`。
+states 要求匹配当前状态；statesNone 排除完全匹配的一组状态，
+例如 `statesNone: {housing: {status: "owns_home"}}` 排除已经拥有住房的玩家。
 category 按 milestone、followup、conditional、random 的顺序筛选；
 前三类使用 priority，random 使用 weight。冷却单位为年。
-重要节点可标记 `isMajorNode: true`，主要事件后可继续同一年，每年最多3件。
+“人生中的重大事件”不等于 `isMajorNode: true`。
+只有漏掉会导致状态明显不合理、关键阶段缺失、重要剧情链永久断裂，
+或具有真正不可替代时间窗口的节点，才考虑该标记；普通晋升、搬家、买房、
+婚姻及生育意愿讨论可以延期，保持普通条件/后续事件。
+标记为 true 的节点可以在主要事件后继续同一年，每年最多3件。
 同年追加只处理重要节点，不追加普通随机事件；单一年龄节点仍要检查冲突。
 choice 的 effects 是增减值；addTags/removeTags 是标签数组；importance 取 0～3。
 
@@ -71,4 +82,12 @@ effects 只接受 health、happiness、study、stress、family、autonomy、mone
 
 恢复存档时检查人物、世界、属性范围、历史条目及当前事件状态。
 异常存档会显示提示并回到标题页，不自动删除或覆盖，只有开始新人生才覆盖。
-现有合法 V0.1 存档无需升级即可读取。
+现有合法 V0.1 存档通过升级机制读取；阶段3仍使用存档格式version 3。
+
+## 试玩青年分流
+
+两局可在23岁分别选高薪高压和稳定普通工作。
+高压路线试着接项目、争取晋升；另一局保留下班时间、不追求晋升。
+还可在婚姻和住房讨论中分别选择登记/不登记、买房/继续租住，观察后续卡片区别。
+22岁暂缓就业会转待业求职，不被23岁第一份工作强行覆盖。
+父母意愿讨论只记录计划；本轮没有正式孩子出生或育儿剧情。
