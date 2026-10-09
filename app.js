@@ -2,11 +2,20 @@ const SAVE_KEY = "east-asian-life-v01";
 const STAT_LABELS = { health: "健康", happiness: "快乐", study: "学业", stress: "压力", family: "家庭关系", money: "金钱" };
 let state = null;
 const $ = id => document.getElementById(id);
+const eventReport = checkEvents(EVENTS);
+if (eventReport.errors.length || eventReport.warnings.length) {
+  $("data-diagnostics").hidden = false;
+  $("data-diagnostics").textContent = ["开发数据检查", ...eventReport.errors.map(x => `错误：${x}`), ...eventReport.warnings.map(x => `警告：${x}`)].join("\n");
+  eventReport.errors.forEach(x => console.error(`[事件数据] ${x}`));
+  eventReport.warnings.forEach(x => console.warn(`[事件数据] ${x}`));
+}
+$("start").disabled = eventReport.errors.length > 0;
 function save() {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); $("save-status").textContent = "已自动保存到本浏览器。"; }
   catch { $("save-status").textContent = "浏览器无法保存；当前仍可游玩，但关闭后可能丢失进度。"; }
 }
 function newLife() {
+  if (eventReport.errors.length) return;
   const player = createPlayer();
   state = { version: 1, player, world: createWorld(), currentEventId: pickEvent(player)?.id || null, resolved: false, result: "" };
   save(); render();
@@ -72,11 +81,10 @@ $("grow").onclick = () => {
 };
 try {
   const raw = localStorage.getItem(SAVE_KEY);
-  if (raw) {
+  if (raw && !eventReport.errors.length) {
     const loaded = JSON.parse(raw);
-    const p = loaded.player;
-    if (loaded.version !== 1 || !p || !loaded.world || !Number.isInteger(p.age) || p.age < 0 || !Array.isArray(p.tags) || !Array.isArray(p.history) || ![...BOUNDED_STATS, "money"].every(key => Number.isFinite(p[key])) || (loaded.currentEventId && !EVENTS.some(event => event.id === loaded.currentEventId))) throw new Error("invalid save");
+    if (!validSave(loaded)) throw new Error("invalid save");
     state = loaded; $("save-status").textContent = "已恢复上次的人生。";
   }
-} catch { $("save-status").textContent = "存档无法读取。点击开始新人生即可重新开始。"; }
+} catch { state = null; $("save-status").textContent = "存档无法读取。原存档尚未覆盖；点击开始新人生即可重新开始。"; }
 render();

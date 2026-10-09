@@ -9,6 +9,7 @@
 <body>
   <main>
     <header><small>人生模拟 · V0.1</small><h1>东亚小孩的一生</h1><p>有些话只说了一次，却会陪你很多年。</p></header>
+    <pre id="data-diagnostics" class="card" hidden role="alert" style="white-space: pre-wrap"></pre>
     <section id="title-screen" class="card"><h2>从一声啼哭开始</h2><p>经历一些小事，做出一些选择，看看它们把你带到哪里。</p><button id="start">开始新人生</button></section>
     <div id="game" hidden>
       <section class="card"><h2 id="profile"></h2><p id="background"></p><div id="stats" class="stats"></div><h3>人生标签</h3><div id="tags"></div></section>
@@ -18,6 +19,6 @@
     </div>
     <p id="save-status" role="status"></p><footer>虚构社会中的一段人生 · 数据只保存在当前浏览器</footer>
   </main>
-  <script src="player.js"></script><script src="events.js"></script><script src="engine.js"></script><script src="app.js"></script>
+  <script src="player.js"></script><script src="events.js"></script><script src="engine.js"></script><script src="validation.js"></script><script src="app.js"></script>
 </body>
 </html>
