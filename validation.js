@@ -7,9 +7,10 @@ function isImportance(v) { return Number.isInteger(v) && v >= 0 && v <= 3; }
 function validEffects(v) {
   return isRecord(v) && Object.entries(v).every(([key, delta]) => [...BOUNDED_STATS, "money"].includes(key) && Number.isFinite(delta));
 }
-function checkEvents(events) {
+function checkEvents(events, maxEventsPerYear = MAX_EVENTS_PER_YEAR) {
   const errors = [], warnings = [], ids = new Set();
   const error = (path, message) => errors.push(`${path}：${message}`);
+  if (!Number.isInteger(maxEventsPerYear) || maxEventsPerYear < 1 || maxEventsPerYear > 3) error("MAX_EVENTS_PER_YEAR", "年度上限必须是 1～3 的整数");
   if (!Array.isArray(events)) return { errors: ["EVENTS 必须是数组"], warnings };
   events.forEach((e, index) => {
     const path = `事件[${index}] (${e?.id || "缺少 id"})`;
@@ -22,6 +23,8 @@ function checkEvents(events) {
     if (!Number.isFinite(e.weight) || e.weight <= 0) error(`${path}.weight`, "必须是有限正数");
     if (!Number.isFinite(e.priority)) error(`${path}.priority`, "必须是有限数值");
     if (typeof e.repeatable !== "boolean") error(`${path}.repeatable`, "必须是 true 或 false");
+    if ("isMajorNode" in e && typeof e.isMajorNode !== "boolean") error(`${path}.isMajorNode`, "必须是 true 或 false，省略表示普通事件");
+    if (e.isMajorNode === true && e.repeatable === true && e.cooldown === 0) warnings.push(`${path}：可重复重要节点的 cooldown 为0，仍会被同年去重和年度上限保护，但请确认是否确实需要每年重复。`);
     if (!isAge(e.cooldown)) error(`${path}.cooldown`, "必须是非负整数（年）");
     const c = e.conditions;
     if (!isRecord(c)) error(`${path}.conditions`, "必须是对象");
@@ -74,25 +77,32 @@ function checkEvents(events) {
       else if (!Array.isArray(referenced.choices) || !referenced.choices.some(choice => choice?.id === ref.choiceId)) error(`事件 (${e.id}).conditions.${key}`, `事件 ${ref.eventId} 中找不到选择 ${ref.choiceId}`);
     }
   }
-  // 保守检查年龄重叠：其他条件可能使两个事件互斥，警告供作者核对。
-  const milestones = events.filter(e => isRecord(e) && e.category === "milestone" && isRecord(e.conditions));
+  // 保守检查年龄重叠；重要节点可以同年处理，但数量和截止年龄仍须核对。
+  const milestones = events.filter(e => isRecord(e) && (e.category === "milestone" || e.isMajorNode === true) && isRecord(e.conditions));
   for (let i = 0; i < milestones.length; i++) for (let j = i + 1; j < milestones.length; j++) {
     const a = milestones[i], b = milestones[j];
     const start = Math.max(a.conditions.minAge ?? 0, b.conditions.minAge ?? 0);
     const end = Math.min(a.conditions.maxAge ?? Infinity, b.conditions.maxAge ?? Infinity);
-    if (start <= end) warnings.push(`必然事件 ${a.id} 与 ${b.id} 在 ${start}～${end === Infinity ? "不限" : end} 岁可能冲突：每年只选一个，请核对其他条件和年龄安排。`);
+    if (start <= end) warnings.push(`重要/必然事件 ${a.id} 与 ${b.id} 在 ${start}～${end === Infinity ? "不限" : end} 岁可能冲突：只有 isMajorNode:true 可追加，每年最多${maxEventsPerYear}个事件，请核对条件和截止年龄。`);
   }
+  const fixedAgeNodes = new Map();
+  for (const event of milestones) if (event.isMajorNode === true && isAge(event.conditions.minAge) && event.conditions.minAge === event.conditions.maxAge) {
+    const age = event.conditions.minAge;
+    if (!fixedAgeNodes.has(age)) fixedAgeNodes.set(age, []);
+    fixedAgeNodes.get(age).push(event.id);
+  }
+  for (const [age, idsAtAge] of fixedAgeNodes) if (idsAtAge.length > maxEventsPerYear) warnings.push(`${age}岁有${idsAtAge.length}个单一年龄重要节点（${idsAtAge.join("、")}），超过年度上限${maxEventsPerYear}，部分节点可能错过；请扩展年龄窗口或确认条件互斥。`);
   return { errors, warnings };
 }
 function validSave(data) {
-  if (!isRecord(data) || ![1, SAVE_VERSION].includes(data.version) || !isRecord(data.player) || !isRecord(data.world)) return false;
+  if (!isRecord(data) || ![1, 2, SAVE_VERSION].includes(data.version) || !isRecord(data.player) || !isRecord(data.world)) return false;
   const p = data.player, w = data.world;
   if (!isAge(p.age) || p.age > 80 || !Number.isSafeInteger(p.birthYear) || !Number.isSafeInteger(p.birthYear + p.age)) return false;
   if (!["name", "gender", "identity", "familyBackground"].every(k => isText(p[k]))) return false;
   if (typeof p.alive !== "boolean" || p.lifeStage !== stageFor(p.age)[1]) return false;
   if (!BOUNDED_STATS.every(k => Number.isFinite(p[k]) && p[k] >= 0 && p[k] <= 100) || !Number.isFinite(p.money)) return false;
   if (p.alive !== (p.age < 80 && p.health > 0) || !isTextList(p.tags) || !Array.isArray(p.history)) return false;
-  if (data.version === SAVE_VERSION) {
+  if (data.version >= 2) {
     if (!validLifeStates(p)) return false;
   } else {
     const legacyStates = createLifeStates();
@@ -126,5 +136,6 @@ function validSave(data) {
     if (data.resolved && (!last || last.age !== p.age || last.eventId !== event.id || !event.choices.some(c => c.id === last.choiceId) || data.result !== last.resultText)) return false;
     if (!data.resolved && (!eligible(event, data.version === 1 ? {...p, ...legacyStateDefaults(p)} : p) || data.result !== "")) return false;
   } else if (data.resolved || data.result !== "") return false;
+  if (data.version === SAVE_VERSION && !validAnnualProgress(data)) return false;
   return true;
 }

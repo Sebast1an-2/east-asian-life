@@ -2,7 +2,7 @@
 // category: milestone 必然节点 / followup 因果 / conditional 条件 / random 随机。
 const EVENTS = [
   {
-    id: "birth", title: "你好，小孩", category: "milestone", eventTags: ["家庭"],
+    id: "birth", title: "你好，小孩", category: "milestone", isMajorNode: true, eventTags: ["家庭"],
     priority: 100, weight: 1, repeatable: false, cooldown: 0,
     conditions: { minAge: 0, maxAge: 0 }, description: "你出生了。大人们围着你，说你以后一定有出息。你暂时只关心奶。",
     choices: [
@@ -20,7 +20,7 @@ const EVENTS = [
     ]
   },
   {
-    id: "score95", title: "那 5 分去哪了？", category: "milestone", eventTags: ["成绩", "家庭"],
+    id: "score95", title: "那 5 分去哪了？", category: "milestone", isMajorNode: true, eventTags: ["成绩", "家庭"],
     priority: 100, weight: 1, repeatable: false, cooldown: 0,
     conditions: { minAge: 8, maxAge: 8 }, description: "你考了 95 分，兴冲冲地回家。父母的第一句话是：那 5 分去哪了？",
     choices: [
@@ -38,7 +38,7 @@ const EVENTS = [
     ]
   },
   {
-    id: "interest", title: "兴趣还是成绩", category: "milestone", eventTags: ["选择", "成绩"],
+    id: "interest", title: "兴趣还是成绩", category: "milestone", isMajorNode: true, eventTags: ["选择", "成绩"],
     priority: 100, weight: 1, repeatable: false, cooldown: 0,
     conditions: { minAge: 13, maxAge: 13 }, description: "你想参加画画社团，父母觉得这段时间用来补数学更划算。",
     choices: [
@@ -47,7 +47,7 @@ const EVENTS = [
     ]
   },
   {
-    id: "mock", title: "模拟考试", category: "milestone", eventTags: ["考试"],
+    id: "mock", title: "模拟考试", category: "milestone", isMajorNode: true, eventTags: ["考试"],
     priority: 100, weight: 1, repeatable: false, cooldown: 0,
     conditions: { minAge: 17, maxAge: 17 }, description: "模拟考结束。老师说这不是人生的全部，然后发了新的三套试卷。",
     choices: [
@@ -56,7 +56,7 @@ const EVENTS = [
     ]
   },
   {
-    id: "major", title: "选择专业", category: "milestone", eventTags: ["选择"],
+    id: "major", title: "选择专业", category: "milestone", isMajorNode: true, eventTags: ["选择"],
     priority: 100, weight: 1, repeatable: false, cooldown: 0,
     conditions: { minAge: 19, maxAge: 19 }, description: "志愿表摆在眼前。有人说要选喜欢的，有人说要选好找工作的。",
     choices: [
@@ -79,7 +79,7 @@ const EVENTS = [
 // 第二批：只增加剧情数据，继续使用同一套引擎。
 EVENTS.push(
   {
-    id: "first_plan", title: "抓周：第一次被规划人生", category: "milestone", eventTags: ["家庭", "期待"],
+    id: "first_plan", title: "抓周：第一次被规划人生", category: "milestone", isMajorNode: true, eventTags: ["家庭", "期待"],
     priority: 100, weight: 1, repeatable: false, cooldown: 0,
     conditions: { minAge: 1, maxAge: 1 }, description: "桌上摆着笔、算盘和玩具。你还不会说话，亲戚已经替你开了职业规划会。妈妈偷偷把玩具推近了一点。",
     choices: [
@@ -178,7 +178,7 @@ EVENTS.push(
     ]
   },
   {
-    id: "exam_eve", title: "重要考试前夜", category: "milestone", eventTags: ["考试", "关心"],
+    id: "exam_eve", title: "重要考试前夜", category: "milestone", isMajorNode: true, eventTags: ["考试", "关心"],
     priority: 100, weight: 1, repeatable: false, cooldown: 0,
     conditions: { minAge: 18, maxAge: 18 }, description: "准考证在桌上，父母把闹钟检查了三遍。爸爸说考完吃什么都行，说完又怕给你压力，赶紧去洗碗。",
     choices: [
@@ -223,7 +223,7 @@ EVENTS.push(
     ]
   },
   {
-    id: "first_job", title: "第一份工作", category: "milestone", eventTags: ["工作", "选择"],
+    id: "first_job", title: "第一份工作", category: "milestone", isMajorNode: true, eventTags: ["工作", "选择"],
     priority: 100, weight: 1, repeatable: false, cooldown: 0,
     conditions: { minAge: 23, maxAge: 23 }, description: "两份入职通知摆在屏幕上：一份稳定但路远，一份薪水略高、下班时间写着‘弹性’。父母说都行，又各问了三遍。",
     choices: [

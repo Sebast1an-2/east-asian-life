@@ -16,7 +16,7 @@ function context(beforeApp = 'EVENTS.splice(8);', logger = console) {
     getElementById(id) { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); },
     createElement() { return new Element(); }
   }, localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) }, confirm: () => true });
-  for (const file of ['player.js', 'life-state.js', 'events.js', 'engine.js', 'validation.js', 'app.js']) {
+  for (const file of ['player.js', 'life-state.js', 'events.js', 'engine.js', 'annual.js', 'validation.js', 'app.js']) {
     if (file === 'app.js' && beforeApp) vm.runInContext(beforeApp, ctx);
     vm.runInContext(fs.readFileSync(file, 'utf8'), ctx, { filename: file });
   }
@@ -187,7 +187,7 @@ const coverage = run(`(() => {
     const player = createPlayer(), world = createWorld();
     while (player.alive) {
       const event = pickEvent(player, random);
-      const saved = {version: SAVE_VERSION, player, world, currentEventId: event?.id || null, resolved: false, result: ''};
+      const saved = {version: 2, player, world, currentEventId: event?.id || null, resolved: false, result: ''};
       if (!validSave(saved)) throw Error('invalid pending save at ' + player.age);
       if (event) {
         const choice = event.choices[Math.floor(random() * event.choices.length)];
@@ -199,7 +199,7 @@ const coverage = run(`(() => {
       } else player.history.push({age: player.age, year: world.year, eventId: null, eventTags: [], text: '平静的一年。', importance: 0});
       advanceYear(player, world);
     }
-    if (!validSave({version: SAVE_VERSION, player, world, currentEventId: null, resolved: false, result: ''})) throw Error('invalid end save');
+    if (!validSave({version: 2, player, world, currentEventId: null, resolved: false, result: ''})) throw Error('invalid end save');
   }
   return {counts, witnesses, missing: EVENTS.filter(e => !counts[e.id]).map(e => e.id)};
 })()`);
@@ -256,8 +256,9 @@ run(`{
   applyChoice(p, job, job.choices[0]);
   expect(p.work.status === 'employed' && p.work.startYear === 2023 && p.work.workStyle === 'stable', '工作状态或年份错误');
   expect(p.history[0].stateChanges.work.before.status === 'not_working' && p.history[0].stateChanges.work.after.status === 'employed', '就业历史缺少前后状态');
-  const change = patch => applyChoice(p, job, {...job.choices[0], effects: {}, addTags: [], removeTags: [], stateChanges: patch});
-  const saved = () => ({version: SAVE_VERSION, player: p, world: {...createWorld(), year: p.birthYear + p.age}, currentEventId: null, resolved: false, result: ''});
+  let changeNumber = 0;
+  const change = patch => applyChoice(p, {...job, id: 'state_test_' + ++changeNumber}, {...job.choices[0], effects: {}, addTags: [], removeTags: [], stateChanges: patch});
+  const saved = () => ({version: 2, player: p, world: {...createWorld(), year: p.birthYear + p.age}, currentEventId: null, resolved: false, result: ''});
   change({work: {level: 2}});
   expect(p.work.startYear === 2023 && p.work.level === 2, '岗位更新覆盖了就业开始年份');
   change({work: {status: 'unemployed'}});
@@ -325,7 +326,7 @@ const legacyRaw = run(`(() => {
 })()`);
 storage.set('east-asian-life-v01', legacyRaw);
 ctx = context('');
-assert.equal(run('state.version'), 2);
+assert.equal(run('state.version'), 3);
 assert.equal(run('state.player.work.status'), 'not_working');
 assert.equal(run('state.player.relationship.status'), 'single');
 assert.equal(run('state.player.child.hasChild'), false);
@@ -335,7 +336,7 @@ assert.equal(storage.get('east-asian-life-v01'), legacyRaw, '升级读取不立�
 assert.equal(run('validSave(state)'), true);
 assert.equal(run('JSON.stringify(upgradeSave(state)) === JSON.stringify(state)'), true, '重复升级应保持一致');
 nodes.get('grow').onclick();
-assert.equal(JSON.parse(storage.get('east-asian-life-v01')).version, 2);
+assert.equal(JSON.parse(storage.get('east-asian-life-v01')).version, 3);
 
 const version2Raw = storage.get('east-asian-life-v01');
 for (const mutation of ['delete data.player.work', 'data.player.relationship = null',
@@ -354,7 +355,7 @@ ctx = context('');
 assert.equal(run('state'), null);
 storage.set('east-asian-life-v01', version2Raw);
 ctx = context('');
-assert.equal(run('state.version'), 2);
+assert.equal(run('state.version'), 3);
 console.log('PASS: choice-specific branches, exclusion conditions, state filters, employment/relationships/child/housing, atomic rejection, state-change history, V1 migration and V2 restoration.');
 
 // 旧存档的待选、已结束和部分新字段情况同样要可恢复。
@@ -370,7 +371,7 @@ const legacyCases = run(`(() => {
 })()`);
 for (const raw of legacyCases) {
   storage.set('east-asian-life-v01', raw); ctx = context('');
-  assert.equal(run('state.version'), 2);
+  assert.equal(run('state.version'), 3);
   assert.equal(run('validSave(state)'), true);
   assert.equal(run('state.player.child.birthYear'), null);
   assert.equal(storage.get('east-asian-life-v01'), raw);
@@ -389,3 +390,173 @@ assert.equal(run('state.player.work.workStyle'), 'high_pressure');
 assert.equal(run('state.player.history.at(-1).stateChanges.work.before.status'), 'not_working');
 assert.match(nodes.get('life-states').textContent, /在职/);
 console.log('PASS: pending/ended/partial V1 save upgrade and first-job state/history persisted through UI reload.');
+
+// 阶段2专用事件只存在于测试环境。通过真实按钮测试年度流程。
+const annualBase = JSON.parse(run('JSON.stringify(EVENTS[0])'));
+function annualEvent(id, major = false, priority = 10, extra = {}) {
+  return {...annualBase, id, title: id, category: 'conditional', isMajorNode: major, priority,
+    conditions: {minAge: 28, maxAge: 29}, eventTags: [id],
+    choices: [{id: 'go', text: '选择', resultText: '已选择', effects: {}, addTags: [], removeTags: [], historyText: id, importance: 2}], ...extra};
+}
+let annualSetup = '';
+function startAnnualTest(events, playerSetup = '') {
+  storage.clear();
+  annualSetup = `EVENTS.splice(0, EVENTS.length, ...${JSON.stringify(events)});`;
+  ctx = context(annualSetup, {error() {}, warn() {}});
+  assert.equal(run('eventReport.errors.length'), 0);
+  run(`{
+    const player = createPlayer(); player.age = 28; player.lifeStage = stageFor(28)[1]; ${playerSetup}
+    state = {version: SAVE_VERSION, player, world: {...createWorld(), year: 2028}, currentEventId: null, resolved: false, result: ''};
+    beginYear(state, () => 0); save(); render();
+  }`);
+  assert.equal(run('validSave(state)'), true);
+}
+function annualChoose() {
+  nodes.get('choices').children[0].onclick();
+  assert.equal(run('validSave(state)'), true);
+}
+function annualNext() {
+  nodes.get('grow').onclick();
+  assert.equal(run('validSave(state)'), true);
+}
+function annualReload() {
+  ctx = context(annualSetup, {error() {}, warn() {}});
+  assert.equal(run('state !== null && validSave(state)'), true);
+}
+
+startAnnualTest([annualEvent('ordinary_a', false, 100), annualEvent('ordinary_b', false, 10)]);
+assert.equal(run(`(() => {const before = JSON.stringify(state); beginYear(state, () => {throw Error('不应重抽');}); return JSON.stringify(state) === before;})()`), true);
+annualChoose();
+assert.equal(nodes.get('grow').textContent, '长大一岁 →');
+annualNext();
+assert.equal(run('state.player.age'), 29);
+assert.equal(run('state.player.history.filter(h => h.age === 28 && h.eventId).length'), 1);
+
+startAnnualTest([annualEvent('ordinary', false, 100), annualEvent('node', true, 10)]);
+annualChoose();
+assert.equal(nodes.get('grow').textContent, '继续这一年 →');
+annualReload();
+assert.equal(run('state.player.age'), 28);
+assert.equal(run('state.annual.processedCount'), 1);
+assert.equal(run('state.currentEventId'), 'ordinary');
+assert.equal(nodes.get('choices').children.length, 0);
+annualNext();
+assert.equal(run('state.currentEventId'), 'node');
+assert.equal(run('state.player.age'), 28);
+annualReload(); // 第二件尚未选择时也恢复原卡片。
+assert.equal(run('state.currentEventId'), 'node');
+annualChoose(); annualReload();
+assert.equal(run('state.annual.processedCount'), 2);
+assert.equal(nodes.get('choices').children.length, 0);
+annualNext();
+assert.equal(run('state.player.age'), 29);
+assert.equal(run('state.player.history.filter(h => h.age === 28 && h.eventId).length'), 2);
+
+startAnnualTest([annualEvent('node_a', true, 100), annualEvent('node_b', true, 10)]);
+annualChoose(); annualNext(); annualChoose();
+assert.equal(run('state.player.age'), 28);
+assert.equal(run('JSON.stringify(state.annual.eventIds)'), '["node_a","node_b"]');
+console.log('DEMO: age 28 node_a -> continue same year -> node_b; age remains 28, completed=2; next advances to 29.');
+annualNext(); assert.equal(run('state.player.age'), 29);
+
+startAnnualTest(['a','b','c','d'].map((id, i) => annualEvent(id, true, 100-i)));
+for (let i = 0; i < 3; i++) { annualChoose(); if (i < 2) annualNext(); }
+assert.equal(run('state.annual.processedCount'), 3);
+assert.equal(run('pendingMajorNodes(state).length'), 1);
+assert.equal(nodes.get('grow').textContent, '长大一岁 →');
+annualReload(); annualNext();
+assert.equal(run('state.player.age'), 29);
+assert.equal(run('state.currentEventId'), 'd'); // 年龄窗口内仍有机会。
+annualChoose(); annualNext();
+assert.equal(run('state.player.age'), 30);
+
+const breakup = annualEvent('breakup', true, 100);
+breakup.choices[0].stateChanges = {relationship: {status: 'single'}};
+const marriage = annualEvent('marriage', true, 10, {conditions: {minAge: 28, maxAge: 29, states: {relationship: {status: 'dating'}}}});
+startAnnualTest([breakup, marriage], 'player.relationship = {status: "dating", startYear: 2026};');
+assert.equal(run('eligible(EVENTS[1], state.player)'), true);
+annualChoose();
+assert.equal(run('state.player.relationship.status'), 'single');
+assert.equal(run('pendingMajorNodes(state).length'), 0);
+annualReload();
+assert.equal(nodes.get('grow').textContent, '长大一岁 →');
+annualNext();
+assert.equal(run('state.player.age'), 29);
+assert.equal(run('state.currentEventId'), null);
+console.log('DEMO: age 28 breakup changes dating -> single; marriage node becomes ineligible before display and stays absent after reload.');
+
+const hire = annualEvent('hire', false, 100);
+hire.choices[0].stateChanges = {work: {status: 'employed', careerType: 'general', level: 1, workStyle: 'stable'}};
+const settle = annualEvent('settle', true, 10, {conditions: {minAge: 28, maxAge: 29, states: {work: {status: 'employed'}}}});
+settle.choices[0].stateChanges = {housing: {status: 'renting'}, child: {hasChild: true}};
+startAnnualTest([hire, settle]);
+assert.equal(run('eligible(EVENTS[1], state.player)'), false);
+annualChoose(); annualReload(); annualNext();
+assert.equal(run('state.currentEventId'), 'settle');
+annualChoose(); annualReload();
+assert.equal(run('state.player.work.startYear'), 2028);
+assert.equal(run('state.player.child.birthYear'), 2028);
+assert.equal(run('state.player.housing.status'), 'renting');
+assert.equal(run('state.player.history.at(-1).stateChanges.child.after.birthYear'), 2028);
+
+startAnnualTest([annualEvent('repeat', true, 100, {repeatable: true, cooldown: 0})]);
+annualChoose();
+assert.equal(nodes.get('grow').textContent, '长大一岁 →');
+annualNext();
+assert.equal(run('state.player.age'), 29);
+assert.equal(run('state.currentEventId'), 'repeat'); // 可以跨年重复，不允许同年重复。
+startAnnualTest([annualEvent('cooldown', true, 100, {repeatable: true, cooldown: 2, conditions: {minAge: 28, maxAge: 32}})]);
+annualChoose(); annualNext();
+assert.equal(run('state.player.age'), 29);
+assert.equal(run('state.currentEventId'), null);
+annualNext();
+assert.equal(run('state.currentEventId'), 'cooldown');
+assert.equal(run('state.player.age'), 30);
+
+for (const limit of [0, -1, 4, 1.5, '3', Infinity]) assert.equal(run(`checkEvents(EVENTS, ${JSON.stringify(limit)}).errors.some(e => e.includes('年度上限'))`), true);
+assert.equal(run('checkEvents([{...EVENTS[0], isMajorNode: "true"}]).errors.some(e => e.includes("isMajorNode"))'), true);
+assert.equal(run('checkEvents([EVENTS[0], {...EVENTS[0], cooldown: 0}]).warnings.some(w => w.includes("同年去重"))'), true);
+assert.equal(run(`checkEvents([0,1,2,3].map(i => ({...EVENTS[0], id: 'fixed_'+i, conditions: {minAge:28,maxAge:28}}))).warnings.some(w => w.includes('超过年度上限'))`), true);
+
+// 年度状态被篡改时不能靠刷新恢复出重复事件或更多年度名额。
+const annualRaw = storage.get('east-asian-life-v01');
+for (const mutation of ['delete data.annual', 'data.annual.year = 2099', 'data.annual.age = 29',
+  'data.annual.mainEventDrawn = false', 'data.annual.processedCount = -1', 'data.annual.processedCount = 4',
+  'data.annual.eventIds = ["cooldown", "cooldown"]']) {
+  const raw = run(`(() => {const data = ${annualRaw}; ${mutation}; return JSON.stringify(data);})()`);
+  storage.set('east-asian-life-v01', raw);
+  ctx = context(annualSetup, {error() {}, warn() {}});
+  assert.equal(run('state'), null, mutation);
+  assert.equal(storage.get('east-asian-life-v01'), raw);
+}
+
+// 阶段1 version 2 升级，不重抽主要事件，不改变人生状态。
+storage.clear(); ctx = context(''); nodes.get('start').onclick(); nodes.get('choices').children[0].onclick();
+const v2Raw = run('(() => {const old = JSON.parse(JSON.stringify(state)); old.version = 2; delete old.annual; return JSON.stringify(old);})()');
+storage.set('east-asian-life-v01', v2Raw); ctx = context('');
+assert.equal(run('state.version'), 3);
+assert.equal(run('state.annual.mainEventDrawn'), true);
+assert.equal(run('state.annual.processedCount'), 1);
+assert.equal(run('state.currentEventId'), 'birth');
+assert.equal(nodes.get('choices').children.length, 0);
+assert.equal(storage.get('east-asian-life-v01'), v2Raw);
+assert.equal(run(`JSON.stringify(state.player) === JSON.stringify(JSON.parse(${JSON.stringify(v2Raw)}).player)`), true);
+console.log('PASS: ordinary once, same-year major nodes, 3-event cap, age-window retry, dynamic invalidation/unlock, first/second-event reloads, cooldown, validation and V2->V3 upgrade.');
+
+// 带同年节点的完整人生，年龄仍只从0推进到80。
+storage.clear();
+const extraNode = annualEvent('same_year_test', true, 1, {category: 'followup', conditions: {minAge: 23, maxAge: 23, historyEventIds: ['first_job']}});
+ctx = context(`EVENTS.push(${JSON.stringify(extraNode)});`, {error() {}, warn() {}});
+nodes.get('start').onclick();
+let fullLifeSteps = 0;
+while (run('state.player.alive')) {
+  if (nodes.get('choices').children.length) nodes.get('choices').children[0].onclick();
+  assert.equal(run('validSave(state)'), true);
+  nodes.get('grow').onclick();
+  assert.ok(++fullLifeSteps <= 81);
+}
+assert.equal(run('state.player.age'), 80);
+assert.equal(run('state.player.history.filter(h => h.age === 23 && h.eventId).length'), 2);
+assert.equal(fullLifeSteps, 81);
+assert.equal(run('validSave(state)'), true);
+console.log('PASS: complete age 0-80 UI life with an additional same-year node; one extra click and no extra age increment.');

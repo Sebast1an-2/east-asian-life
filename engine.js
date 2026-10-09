@@ -19,8 +19,8 @@ function eligible(event, player) {
     (range.min === undefined || player[key] >= range.min) &&
     (range.max === undefined || player[key] <= range.max));
 }
-function pickEvent(player, random = Math.random) {
-  let pool = EVENTS.filter(event => eligible(event, player));
+function pickEvent(player, random = Math.random, candidates = EVENTS) {
+  let pool = candidates.filter(event => eligible(event, player));
   if (!pool.length) return null;
   const category = Math.max(...pool.map(event => CATEGORY_ORDER[event.category]));
   pool = pool.filter(event => CATEGORY_ORDER[event.category] === category);

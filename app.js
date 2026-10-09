@@ -17,7 +17,8 @@ function save() {
 function newLife() {
   if (eventReport.errors.length) return;
   const player = createPlayer();
-  state = { version: SAVE_VERSION, player, world: createWorld(), currentEventId: pickEvent(player)?.id || null, resolved: false, result: "" };
+  state = { version: SAVE_VERSION, player, world: createWorld(), currentEventId: null, resolved: false, result: "" };
+  beginYear(state);
   save(); render();
 }
 function addText(parent, tag, text, className) {
@@ -50,7 +51,7 @@ function render() {
   if (!p.history.length) addText($("history"), "li", "故事还没有写下第一行。");
   const event = EVENTS.find(item => item.id === state.currentEventId);
   $("choices").replaceChildren();
-  $("event-meta").textContent = event && p.alive ? `${p.age} 岁 · ${event.eventTags.join(" / ")}` : "人生的一页";
+  $("event-meta").textContent = event && p.alive ? `${p.age} 岁 · 今年第 ${state.resolved ? state.annual.processedCount : state.annual.processedCount + 1} 件事 · ${event.eventTags.join(" / ")}` : "人生的一页";
   $("result").textContent = state.result;
   if (!p.alive) {
     $("event-title").textContent = "这一生，走到了终点";
@@ -63,9 +64,8 @@ function render() {
       const button = addText($("choices"), "button", choice.text);
       button.onclick = () => {
         if (state.resolved || !state.player.alive) return;
-        try { applyChoice(state.player, event, choice); }
+        try { finishAnnualChoice(state, event, choice); }
         catch (error) { $("save-status").textContent = `选择未执行：${error.message}`; console.error(error); return; }
-        state.resolved = true; state.result = choice.resultText;
         save(); render();
       };
     });
@@ -74,23 +74,19 @@ function render() {
     $("description").textContent = "这一年没有特别的事件。生活也由这些平凡的日子组成。";
   }
   $("grow").disabled = !p.alive || (!!event && !state.resolved);
-  $("grow").textContent = event && !state.resolved && p.alive ? "先做出选择，再长大" : "长大一岁 →";
+  $("grow").textContent = event && !state.resolved && p.alive ? "先做出选择，再继续" : (canContinueYear(state) ? "继续这一年 →" : "长大一岁 →");
 }
 $("start").onclick = newLife;
 $("restart").onclick = () => { if (confirm("重新投胎会覆盖当前人生存档。确定开始吗？")) newLife(); };
 $("grow").onclick = () => {
-  if (!state || !state.player.alive || (state.currentEventId && !state.resolved)) return;
-  if (!state.currentEventId) state.player.history.push({ age: state.player.age, year: state.world.year, eventId: null, eventTags: [], text: "平静地度过了这一年。", importance: 0 });
-  advanceYear(state.player, state.world);
-  state.currentEventId = state.player.alive ? pickEvent(state.player)?.id || null : null;
-  state.resolved = false; state.result = ""; save(); render();
+  if (state && continueOrGrow(state)) { save(); render(); }
 };
 try {
   const raw = localStorage.getItem(SAVE_KEY);
   if (raw && !eventReport.errors.length) {
     const loaded = JSON.parse(raw);
     state = upgradeSave(loaded);
-    $("save-status").textContent = loaded.version === SAVE_VERSION ? "已恢复上次的人生。" : "已恢复并升级旧存档；新增状态使用安全默认值，下次操作时保存。";
+    $("save-status").textContent = loaded.version === SAVE_VERSION ? "已恢复上次的人生。" : "已恢复并升级旧存档，保留原事件与历史，下次操作时保存。";
   }
 } catch { state = null; $("save-status").textContent = "存档无法读取。原存档尚未覆盖；点击开始新人生即可重新开始。"; }
 render();

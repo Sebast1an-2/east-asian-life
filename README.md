@@ -13,6 +13,8 @@
 - `style.css`：颜色、间距、布局。
 - `player.js`：Player、人生阶段和 World 初始数据，以及未来 NPC 结构说明。
 - `life-state.js`：V0.2阶段1的最小人生状态、安全修改与旧存档升级。
+- `annual.js`：阶段2的年度进度、同年重要节点和每年最多3件事件。
+- `ANNUAL_GUIDE.md`：年度规则、刷新恢复和存档升级说明。
 - `TRAJECTORY_GUIDE.md`：新增历史选择条件、状态格式和存档升级说明。
 - `events.js`：28 个事件（原有 8 个和新增 20 个），修改剧情先看这里。
 - `EVENT_CATALOG.md`：按阶段整理的事件清单、前置条件和跨年龄事件链。
@@ -39,7 +41,8 @@ conditions 支持 minAge/maxAge、lifeStages、tagsAll、tagsNone、historyEvent
 以及 stats（例如 `stats: { stress: { min: 50 } }`）。
 category 按 milestone、followup、conditional、random 的顺序筛选；
 前三类使用 priority，random 使用 weight。冷却单位为年。
-不要把两个必然事件设为同一年龄，本版每年只展示一个事件。
+重要节点可标记 `isMajorNode: true`，主要事件后可继续同一年，每年最多3件。
+同年追加只处理重要节点，不追加普通随机事件；单一年龄节点仍要检查冲突。
 choice 的 effects 是增减值；addTags/removeTags 是标签数组；importance 取 0～3。
 
 ## 静态部署

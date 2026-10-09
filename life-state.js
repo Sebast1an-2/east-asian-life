@@ -1,5 +1,5 @@
 // 当前情况单独存放；过去的经历仍保存在 History 中。
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 const LIFE_STATE_FIELDS = {
   work: { status: ["not_working", "employed", "unemployed", "retired"], careerType: "textOrNull", level: "level", workStyle: [null, "stable", "high_pressure", "flexible"], startYear: "yearOrNull" },
   relationship: { status: ["single", "dating", "married"], startYear: "yearOrNull" },
@@ -88,7 +88,7 @@ function legacyStateDefaults(player) {
   return Object.fromEntries(Object.entries(createLifeStates()).map(([group, defaults]) => [group, {...defaults, ...(player[group] || {})}]));
 }
 function upgradeSave(data) {
-  if (!isRecord(data) || ![1, SAVE_VERSION].includes(data.version)) throw new Error("不支持的存档版本");
+  if (!isRecord(data) || ![1, 2, SAVE_VERSION].includes(data.version)) throw new Error("不支持的存档版本");
   if (data.version === SAVE_VERSION) {
     if (!validSave(data)) throw new Error("存档无效");
     return data;
@@ -96,9 +96,9 @@ function upgradeSave(data) {
   // 先验证原内容，再补缺失字段；不根据年龄、身份或标签猜测经历。
   if (!validSave(data)) throw new Error("旧存档无效");
   const upgraded = JSON.parse(JSON.stringify(data));
-  for (const [group, defaults] of Object.entries(createLifeStates())) {
-    upgraded.player[group] = {...defaults, ...(upgraded.player[group] || {})};
-  }
+  if (data.version === 1) for (const [group, defaults] of Object.entries(createLifeStates())) upgraded.player[group] = {...defaults, ...(upgraded.player[group] || {})};
+  // 旧版本当年已经抽过主要事件。只从真实历史恢复完成数，绝不重抽。
+  upgraded.annual = createAnnualProgress(upgraded.player);
   upgraded.version = SAVE_VERSION;
   if (!validSave(upgraded)) throw new Error("升级后存档无效");
   return upgraded;
