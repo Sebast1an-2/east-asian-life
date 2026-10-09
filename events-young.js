@@ -14,7 +14,7 @@ EVENTS.push(
   {
     id: "young_fast_track", title: "被看见的代价", category: "followup", eventTags: ["工作", "机会"],
     priority: 24, weight: 1, repeatable: false, cooldown: 0,
-    conditions: {minAge: 25, maxAge: 29, states: {work: {status: "employed", workStyle: "high_pressure"}}, historyEventIds: ["first_job"]},
+    conditions: {tagsNone: ["特殊职业在岗"],minAge: 25, maxAge: 29, states: {work: {status: "employed", workStyle: "high_pressure"}}, historyEventIds: ["first_job"]},
     description: "主管想让你带一个急项目：钱多一些，晚上的消息也多一些。他说自己当年就是这么过来的，眼底的疲惫不像奖章。",
     choices: [
       {id: "take", text: "接下来，争取下一次机会", resultText: "奖金到账了，日历的空白被填掉。晋升讨论开始出现你的名字。", effects: {money: 5000, stress: 9, health: -4}, addTags: ["争取晋升"], removeTags: ["暂缓晋升"], historyText: "高压工作里，我接下急项目，争取晋升机会。", importance: 3},
@@ -24,7 +24,7 @@ EVENTS.push(
   {
     id: "young_free_evening", title: "下班后，时间是谁的", category: "random", eventTags: ["兴趣", "日常"],
     priority: 4, weight: 2, repeatable: true, cooldown: 2,
-    conditions: {minAge: 24, maxAge: 35, states: {work: {status: "employed", workStyle: "balanced"}}},
+    conditions: {tagsNone: ["特殊职业在岗"],minAge: 24, maxAge: 35, states: {work: {status: "employed", workStyle: "balanced"}}},
     description: "按时下班的晚上，手机没响。你可以去见人、画两笔，也可以接一点额外工作。空出的时间并不会自动知道该去哪里。",
     choices: [
       {id: "keep_time", text: "把时间留给兴趣和身边的人", resultText: "没有额外收入，你却有一晚不需要向工作交代的生活。", effects: {money: -100, happiness: 6, health: 2, stress: -4}, addTags: ["给生活留时间"], removeTags: [], historyText: "一个按时下班的晚上，我把时间留给自己的生活。", importance: 2},
@@ -35,7 +35,7 @@ EVENTS.push(
     id: "young_promotion", title: "晋升谈话", category: "followup", eventTags: ["工作", "选择"],
     priority: 30, weight: 1, repeatable: false, cooldown: 0,
     // 不限于第一份工作：重新就业后，也可通过换岗位或争取机会进入后续。
-    conditions: {minAge: 27, maxAge: 35, tagsAll: ["争取晋升"], states: {work: {status: "employed", level: 1}}, historyChoicesAny: [
+    conditions: {tagsNone: ["特殊职业在岗"],minAge: 27, maxAge: 35, tagsAll: ["争取晋升"], states: {work: {status: "employed", level: 1}}, historyChoicesAny: [
       {eventId: "young_fast_track", choiceId: "take"}, {eventId: "young_free_evening", choiceId: "extra"},
       {eventId: "young_job_change", choiceId: "higher_pay"}, {eventId: "young_burnout", choiceId: "push"},
       {eventId: "young_ranking_echo", choiceId: "compete"}
@@ -49,7 +49,7 @@ EVENTS.push(
   {
     id: "young_job_change", title: "换一条通勤路", category: "conditional", eventTags: ["工作", "转向"],
     priority: 8, weight: 2, repeatable: true, cooldown: 4,
-    conditions: {minAge: 29, maxAge: 35, states: {work: {status: "employed"}}},
+    conditions: {tagsNone: ["特殊职业在岗"],minAge: 29, maxAge: 35, states: {work: {status: "employed"}}},
     description: "你收到两个方向不同的机会：待遇更高但节奏更紧，或者普通收入加清楚的下班时间。原公司也说愿意再谈谈。",
     choices: [
       {id: "higher_pay", text: "换到收入更高的岗位", resultText: "你重新做了一遍自我介绍，也重新排了晚上的时间。", effects: {money: 3500, stress: 6, health: -2}, stateChanges: {work: {careerType: "general", workStyle: "high_pressure"}}, addTags: ["争取晋升"], removeTags: ["暂缓晋升", "给生活留时间"], historyText: "我换到收入更高、节奏更紧的岗位。", importance: 3},
@@ -57,9 +57,10 @@ EVENTS.push(
     ]
   },
   {
+    statReasons: {stress: "当前工作压力已有累积"},
     id: "young_burnout", title: "醒来已经很累", category: "conditional", eventTags: ["工作", "健康"],
     priority: 12, weight: 2, repeatable: true, cooldown: 3,
-    conditions: {minAge: 28, maxAge: 35, states: {work: {status: "employed", workStyle: "high_pressure"}}, stats: {stress: {min: 35}}},
+    conditions: {tagsNone: ["特殊职业在岗"],minAge: 28, maxAge: 35, states: {work: {status: "employed", workStyle: "high_pressure"}}, stats: {stress: {min: 35}}},
     description: "闹钟还没响，你已经在脑子里开会了。体检单暂时没写严重的问题，身体却好像一直在提交延期申请。",
     choices: [
       {id: "push", text: "完成这一轮，再争取资源", resultText: "你得到一笔报酬，疲惫没有一起结清。下一轮谈岗位时，你想把这次算进去。", effects: {money: 2000, health: -5, stress: 5}, addTags: ["争取晋升"], removeTags: [], historyText: "疲惫时，我决定先完成这一轮工作。", importance: 2},
@@ -69,7 +70,7 @@ EVENTS.push(
   {
     id: "young_career_crisis", title: "会议室里的调整名单", category: "random", eventTags: ["工作", "危机"],
     priority: 0, weight: 0.08, repeatable: false, cooldown: 0,
-    conditions: {minAge: 30, maxAge: 35, states: {work: {status: "employed"}}},
+    conditions: {tagsNone: ["特殊职业在岗"],minAge: 30, maxAge: 35, states: {work: {status: "employed"}}},
     description: "业务要缩减，名单里有你。负责人念完补偿安排，低头找不到下一句。表现并没有替所有人挡住这次变化。",
     choices: [
       {id: "leave", text: "接受补偿，先离开再找", resultText: "账户有了一点缓冲，日历突然空了。你需要重新安排没有上班的早晨。", effects: {money: 2500, stress: 7, happiness: -3}, stateChanges: {work: {status: "unemployed"}}, addTags: ["求职中"], removeTags: ["争取晋升", "工作随时在线"], historyText: "职业调整中，我接受补偿离开，重新求职。", importance: 3},
@@ -160,6 +161,7 @@ EVENTS.push(
     ]
   },
   {
+    statReasons: {money: "目前有讨论住房的预算"},
     id: "young_housing_choice", title: "一处住址，几种未来", category: "conditional", eventTags: ["居住", "选择"],
     priority: 14, weight: 1, repeatable: true, cooldown: 3,
     conditions: {minAge: 29, maxAge: 35, statesNone: {housing: {status: "owns_home"}}, tagsNone: ["已讨论住房"], stats: {money: {min: 4000}}},

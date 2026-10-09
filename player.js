@@ -15,7 +15,7 @@ function createPlayer() {
     lifeStage: "childhood", identity: "婴儿", alive: true,
     familyBackground: "普通家庭：日子过得去，期待从不缺席。",
     health: 80, happiness: 65, study: 30, stress: 10, family: 70,
-    money: 0, autonomy: 40, tags: [], history: [], ...createLifeStates()
+    money: 0, autonomy: 40, tags: [], history: [], lifespan: createLifespan(), death: null, ...createLifeStates()
   };
 }
 function createWorld() {

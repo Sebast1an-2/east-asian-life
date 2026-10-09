@@ -14,6 +14,7 @@ function canContinueYear(state) {
 function beginYear(state, random = Math.random) {
   if (state.annual?.age === state.player.age && state.annual.year === state.world.year && state.annual.mainEventDrawn) return;
   state.annual = createAnnualProgress(state.player, false);
+  checkMortality(state.player);
   state.currentEventId = state.player.alive ? pickEvent(state.player, random)?.id || null : null;
   state.annual.mainEventDrawn = true;
   state.resolved = false;

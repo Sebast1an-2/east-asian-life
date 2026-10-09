@@ -15,7 +15,7 @@ EVENTS.push(
   {
     id: "mid_work_pressure", title: "职位后面的日历", category: "random", eventTags: ["工作", "时间"],
     priority: 0, weight: 3, repeatable: true, cooldown: 3,
-    conditions: {minAge: 36, maxAge: 59, states: {work: {status: "employed", workStyle: "high_pressure"}}},
+    conditions: {tagsNone: ["特殊职业在岗"],minAge: 36, maxAge: 59, states: {work: {status: "employed", workStyle: "high_pressure"}}},
     description: "新责任带着一笔收入，也带着更多会议。主管说经验珍贵，你看着日历，想知道珍贵能不能有下班时间。",
     descriptionDetails: [
       {conditions: {tagsAll: ["团队保护离线"], historyChoicesAll: [{eventId: "mid_boundary_echo", choiceId: "wait"}]}, text: "你曾把深夜消息留到白天，这次谈排期时也需要维护那条约定。"},
@@ -29,7 +29,7 @@ EVENTS.push(
   {
     id: "mid_work_balance", title: "经验不只有一个头衔", category: "random", eventTags: ["工作", "意义"],
     priority: 0, weight: 3, repeatable: true, cooldown: 3,
-    conditions: {minAge: 36, maxAge: 59, states: {work: {status: "employed"}}, statesNone: {work: {workStyle: "high_pressure"}}},
+    conditions: {tagsNone: ["特殊职业在岗"],minAge: 36, maxAge: 59, states: {work: {status: "employed"}}, statesNone: {work: {workStyle: "high_pressure"}}},
     description: "有人问你怎么还在做具体的事。年轻同事却把难题拿来找你：他们记得的是你会做什么，不只是名片上的字。",
     descriptionDetails: [{conditions: {tagsAll: ["团队保护离线"], historyChoicesAll: [{eventId: "mid_boundary_echo", choiceId: "wait"}]}, text: "你们把提问时间尽量留在白天，边界需要在每一次具体安排里兑现。"}],
     choices: [
@@ -59,6 +59,7 @@ EVENTS.push(
     ]
   },
   {
+    weightModifiers: [{stats: {health: {max: 45}}, multiplier: 3, reason: "当前健康状况较低"}, {stats: {stress: {min: 60}}, multiplier: 2, reason: "当前压力较高"}],
     id: "mid_health", title: "身体也有自己的日程", category: "random", eventTags: ["健康", "自我"],
     priority: 0, weight: 3, repeatable: true, cooldown: 2,
     conditions: {minAge: 36, maxAge: 59},

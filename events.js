@@ -169,6 +169,7 @@ EVENTS.push(
     ]
   },
   {
+    statReasons: {stress: "当前备考压力较高"},
     id: "late_study", title: "凌晨学习", category: "conditional", eventTags: ["学习", "健康"],
     priority: 10, weight: 1, repeatable: false, cooldown: 0,
     conditions: { minAge: 16, maxAge: 17, stats: { stress: { min: 25 } } }, description: "一点半，台灯还亮着。刚下夜班的妈妈放下一杯水，没有问你学了多少，只问明天几点起。",
@@ -225,7 +226,7 @@ EVENTS.push(
   {
     id: "first_job", title: "第一份工作", category: "milestone", isMajorNode: true, eventTags: ["工作", "选择"],
     priority: 100, weight: 1, repeatable: false, cooldown: 0,
-    conditions: { minAge: 23, maxAge: 23, tagsNone: ["暂缓进入职场"] }, description: "两份入职通知摆在屏幕上：一份稳定但路远，一份薪水略高、下班时间写着‘弹性’。父母说都行，又各问了三遍。",
+    conditions: { minAge: 23, maxAge: 23, tagsNone: ["暂缓进入职场"], statesNone: {work: {status: "employed"}} }, description: "两份入职通知摆在屏幕上：一份稳定但路远，一份薪水略高、下班时间写着‘弹性’。父母说都行，又各问了三遍。",
     choices: [
       { id: "steady", text: "选节奏稳定的工作，接受通勤", resultText: "第一笔收入到账了。晚上大致属于你，早晨有一截属于公交车。", effects: { money: 3000, health: -2, stress: 3, family: 4 }, addTags: ["稳定工作起步"], removeTags: [], historyText: "第一份工作，我选择稳定节奏，接受较长通勤。", importance: 3, identity: "初入职场", stateChanges: { work: { status: "employed", careerType: "general", level: 1, workStyle: "balanced" } } },
       { id: "flexible", text: "选收入更高的岗位，试试弹性", resultText: "收入多了一点，你也开始理解‘弹性’可能向两边拉。", effects: { money: 4500, stress: 8, health: -4, autonomy: 4 }, addTags: ["高压工作起步"], removeTags: [], historyText: "第一份工作，我选择较高收入和不确定的下班时间。", importance: 3, identity: "初入职场", stateChanges: { work: { status: "employed", careerType: "general", level: 1, workStyle: "high_pressure" } } }
@@ -234,7 +235,7 @@ EVENTS.push(
   {
     id: "boss_message", title: "老板深夜发：睡了吗？", category: "followup", eventTags: ["工作", "回声", "边界"],
     priority: 30, weight: 1, repeatable: false, cooldown: 0,
-    conditions: { minAge: 24, maxAge: 28, historyEventIds: ["phone_request", "first_job"] }, description: "23:47，屏幕亮起：‘睡了吗？’你想起申请手机时那句‘方便联系’。老板紧接着说他也刚哄完孩子，客户明早要材料。",
+    conditions: { minAge: 24, maxAge: 28, tagsNone: ["特殊职业在岗"], states: {work: {status: "employed"}}, historyEventIds: ["phone_request", "first_job"] }, description: "23:47，屏幕亮起：‘睡了吗？’你想起申请手机时那句‘方便联系’。老板紧接着说他也刚哄完孩子，客户明早要材料。",
     choices: [
       { id: "reply", text: "回复，今晚帮忙处理", resultText: "材料赶上了，你被认真道谢。睡眠少了，随时在线也可能变成下一次的期待。", effects: { money: 200, stress: 8, health: -5, happiness: -2 }, addTags: ["工作随时在线"], removeTags: ["保留离线时间"], historyText: "老板深夜发消息时，我接下了临时任务。", importance: 3 },
       { id: "morning", text: "说明明早能处理的部分，先休息", resultText: "你保住了睡眠，明早却需要解释进度。老板没再回复，原因你还不知道。", effects: { autonomy: 7, health: 3, stress: 3, money: -100 }, addTags: ["工作边界起步"], removeTags: ["习惯随时回应"], historyText: "老板深夜发消息时，我约定明早处理，先休息。", importance: 3 }

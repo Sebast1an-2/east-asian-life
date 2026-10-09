@@ -16,7 +16,7 @@ function context(beforeApp = 'EVENTS.splice(8);', logger = console, includeYoung
     getElementById(id) { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); },
     createElement() { return new Element(); }
   }, localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) }, confirm: () => true });
-  const files = ['player.js', 'life-state.js', 'events.js', ...(includeYoung ? ['events-young.js'] : []), ...(includeMiddle ? ['events-middle.js'] : []), 'engine.js', 'annual.js', 'validation.js', 'app.js'];
+  const files = ['player.js', 'life-state.js', 'mortality.js', 'events.js', ...(includeYoung ? ['events-young.js'] : []), ...(includeMiddle ? ['events-middle.js'] : []), 'engine.js', 'annual.js', 'validation.js', 'app.js'];
   for (const file of files) {
     if (file === 'app.js' && beforeApp) vm.runInContext(beforeApp, ctx);
     vm.runInContext(fs.readFileSync(file, 'utf8'), ctx, { filename: file });
@@ -44,7 +44,7 @@ while (run('state.player.alive')) {
   const id = run('state.currentEventId');
   if (id) { seen.add(id); nodes.get('choices').children[0].onclick(); }
 }
-assert.equal(run('state.player.age'), 80);
+assert.ok(run('!state.player.alive && state.player.death.deathAge === state.player.age && state.player.age <= MAX_LIFE_AGE'));
 assert.equal(seen.size, 8);
 assert.equal(run('state.player.history.filter(h => h.eventId === "score95").length'), 1);
 assert.equal(nodes.get('grow').disabled, true);
@@ -128,7 +128,7 @@ for (const choiceIndex of [0, 1]) {
   }
   assert.equal(run('validSave(state)'), true);
   ctx = context();
-  assert.equal(run('state.player.age'), 80);
+  assert.ok(run('!state.player.alive && state.player.death.deathAge === state.player.age && state.player.age <= MAX_LIFE_AGE'));
 }
 nodes.get('restart').onclick();
 nodes.get('choices').children[0].onclick();
@@ -156,7 +156,7 @@ storage.set('east-asian-life-v01', healthySave);
 ctx = context();
 assert.equal(run('state.resolved'), true);
 // 选择使健康归零时，终点存档同样可以恢复。
-run('state.player.health = 0; state.player.alive = false; save();');
+run('state.player.health = 0; recordDeath(state.player, "健康严重恶化"); save();');
 ctx = context();
 assert.equal(run('state.player.alive'), false);
 
@@ -188,19 +188,19 @@ const coverage = run(`(() => {
     const player = createPlayer(), world = createWorld();
     while (player.alive) {
       const event = pickEvent(player, random);
-      const saved = {version: 2, player, world, currentEventId: event?.id || null, resolved: false, result: ''};
+      const saved = {version: SAVE_VERSION, player, world, annual:createAnnualProgress(player), currentEventId: event?.id || null, resolved: false, result: ''};
       if (!validSave(saved)) throw Error('invalid pending save at ' + player.age);
       if (event) {
         const choice = event.choices[Math.floor(random() * event.choices.length)];
         applyChoice(player, event, choice);
         counts[event.id] = (counts[event.id] || 0) + 1;
         witnesses[event.id] ||= player.history.filter(h => h.eventId).map(h => ({age: h.age, id: h.eventId, choice: h.choiceId}));
-        saved.resolved = true; saved.result = choice.resultText;
+        saved.resolved = true; saved.result = choice.resultText; saved.annual=createAnnualProgress(player);
         if (!validSave(saved)) throw Error('invalid resolved save ' + event.id);
       } else player.history.push({age: player.age, year: world.year, eventId: null, eventTags: [], text: '平静的一年。', importance: 0});
       advanceYear(player, world);
     }
-    if (!validSave({version: 2, player, world, currentEventId: null, resolved: false, result: ''})) throw Error('invalid end save');
+    if (!validSave({version: SAVE_VERSION, player, world, annual:createAnnualProgress(player), currentEventId: null, resolved: false, result: ''})) throw Error('invalid end save');
   }
   return {counts, witnesses, missing: EVENTS.filter(e => !counts[e.id]).map(e => e.id)};
 })()`);
@@ -226,9 +226,9 @@ while (run('state.player.alive')) {
   }
   assert.equal(run('validSave(state)'), true);
   nodes.get('grow').onclick();
-  assert.ok(++steps <= 80);
+  assert.ok(++steps <= 110);
 }
-assert.equal(run('state.player.age'), 80);
+assert.ok(run('!state.player.alive && state.player.death.deathAge === state.player.age && state.player.age <= MAX_LIFE_AGE'));
 console.log('PASS: 28 events, zero data errors/warnings, 160 seeded lives, all events reachable, cross-age chains, save validation and full UI life with reloads.');
 
 // V0.2 阶段1：测试事件只放在测试环境，不加入正式剧情库。
@@ -327,7 +327,7 @@ const legacyRaw = run(`(() => {
 })()`);
 storage.set('east-asian-life-v01', legacyRaw);
 ctx = context('');
-assert.equal(run('state.version'), 3);
+assert.equal(run('state.version'), 4);
 assert.equal(run('state.player.work.status'), 'not_working');
 assert.equal(run('state.player.relationship.status'), 'single');
 assert.equal(run('state.player.child.hasChild'), false);
@@ -337,7 +337,7 @@ assert.equal(storage.get('east-asian-life-v01'), legacyRaw, '升级读取不立�
 assert.equal(run('validSave(state)'), true);
 assert.equal(run('JSON.stringify(upgradeSave(state)) === JSON.stringify(state)'), true, '重复升级应保持一致');
 nodes.get('grow').onclick();
-assert.equal(JSON.parse(storage.get('east-asian-life-v01')).version, 3);
+assert.equal(JSON.parse(storage.get('east-asian-life-v01')).version, 4);
 
 const version2Raw = storage.get('east-asian-life-v01');
 for (const mutation of ['delete data.player.work', 'data.player.relationship = null',
@@ -356,7 +356,7 @@ ctx = context('');
 assert.equal(run('state'), null);
 storage.set('east-asian-life-v01', version2Raw);
 ctx = context('');
-assert.equal(run('state.version'), 3);
+assert.equal(run('state.version'), 4);
 console.log('PASS: choice-specific branches, exclusion conditions, state filters, employment/relationships/child/housing, atomic rejection, state-change history, V1 migration and V2 restoration.');
 
 // 旧存档的待选、已结束和部分新字段情况同样要可恢复。
@@ -372,7 +372,7 @@ const legacyCases = run(`(() => {
 })()`);
 for (const raw of legacyCases) {
   storage.set('east-asian-life-v01', raw); ctx = context('');
-  assert.equal(run('state.version'), 3);
+  assert.equal(run('state.version'), 4);
   assert.equal(run('validSave(state)'), true);
   assert.equal(run('state.player.child.birthYear'), null);
   assert.equal(storage.get('east-asian-life-v01'), raw);
@@ -535,13 +535,13 @@ for (const mutation of ['delete data.annual', 'data.annual.year = 2099', 'data.a
 storage.clear(); ctx = context(''); nodes.get('start').onclick(); nodes.get('choices').children[0].onclick();
 const v2Raw = run('(() => {const old = JSON.parse(JSON.stringify(state)); old.version = 2; delete old.annual; return JSON.stringify(old);})()');
 storage.set('east-asian-life-v01', v2Raw); ctx = context('');
-assert.equal(run('state.version'), 3);
+assert.equal(run('state.version'), 4);
 assert.equal(run('state.annual.mainEventDrawn'), true);
 assert.equal(run('state.annual.processedCount'), 1);
 assert.equal(run('state.currentEventId'), 'birth');
 assert.equal(nodes.get('choices').children.length, 0);
 assert.equal(storage.get('east-asian-life-v01'), v2Raw);
-assert.equal(run(`JSON.stringify(state.player) === JSON.stringify(JSON.parse(${JSON.stringify(v2Raw)}).player)`), true);
+assert.equal(run(`(() => {const before=JSON.parse(${JSON.stringify(v2Raw)}).player, after=JSON.parse(JSON.stringify(state.player)); for(const p of [before,after]) {delete p.lifespan;delete p.death;} return JSON.stringify(before)===JSON.stringify(after);})()`), true);
 console.log('PASS: ordinary once, same-year major nodes, 3-event cap, age-window retry, dynamic invalidation/unlock, first/second-event reloads, cooldown, validation and V2->V3 upgrade.');
 
 // 带同年节点的完整人生，年龄仍只从0推进到80。
@@ -554,13 +554,13 @@ while (run('state.player.alive')) {
   if (nodes.get('choices').children.length) nodes.get('choices').children[0].onclick();
   assert.equal(run('validSave(state)'), true);
   nodes.get('grow').onclick();
-  assert.ok(++fullLifeSteps <= 81);
+  assert.ok(++fullLifeSteps <= 111);
 }
-assert.equal(run('state.player.age'), 80);
+assert.ok(run('!state.player.alive && state.player.death.deathAge === state.player.age && state.player.age <= MAX_LIFE_AGE'));
 assert.equal(run('state.player.history.filter(h => h.age === 23 && h.eventId).length'), 2);
-assert.equal(fullLifeSteps, 81);
+assert.equal(fullLifeSteps, run('state.player.age') + 1);
 assert.equal(run('validSave(state)'), true);
-console.log('PASS: complete age 0-80 UI life with an additional same-year node; one extra click and no extra age increment.');
+console.log('PASS: complete birth-to-death UI life with an additional same-year node; one extra click and no extra age increment.');
 // 完整50个事件的页面绑定、选择前后刷新和年度上限。
 storage.clear();
 const youthLogger = {error() {}, warn() {}};
@@ -582,7 +582,7 @@ while (run('state.player.alive')) {
   nodes.get('grow').onclick();
   assert.ok(++youthUISteps <= 240);
 }
-assert.equal(run('state.player.age'), 80);
+assert.ok(run('!state.player.alive && state.player.death.deathAge === state.player.age && state.player.age <= MAX_LIFE_AGE'));
 // 随机完整人生可以保持单身；这里检查恢复与合法状态，不要求所有人生结婚。
 assert.ok(['single', 'dating', 'married'].includes(run('state.player.relationship.status')));
 assert.equal(run('state.player.child.hasChild'), false);
@@ -609,7 +609,8 @@ while(run('state.player.alive')) {
   assert.equal(run('validSave(state)'),true);
   nodes.get('grow').onclick(); assert.ok(++middleUISteps<=240);
 }
-assert.equal(run('state.player.age'),80);
+assert.ok(run('!state.player.alive && state.player.death.deathAge === state.player.age && state.player.age <= MAX_LIFE_AGE'));
 assert.ok(run('state.player.history.some(h=>h.eventId?.startsWith("mid_"))'));
 console.log('PASS: full 68-event UI life, pending/resolved description and choice reloads, current states and annual progress.');
 require('./middle-tests.cjs');
+require('./late-tests.cjs');

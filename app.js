@@ -1,5 +1,7 @@
 const SAVE_KEY = "east-asian-life-v01";
 const STAT_LABELS = { health: "健康", happiness: "快乐", study: "学业", stress: "压力", family: "家庭关系", money: "金钱" };
+// 地址末尾加 ?debug=1 显示公开属性的精确条件；自主性继续隐藏。
+const DEBUG_MODE = typeof location !== "undefined" && new URLSearchParams(location.search).get("debug") === "1";
 let state = null;
 const $ = id => document.getElementById(id);
 const eventReport = checkEvents(EVENTS);
@@ -33,9 +35,10 @@ function render() {
   $("profile").textContent = `${p.name} · ${p.gender} · ${p.age} 岁`;
   $("background").textContent = `${state.world.year} 年 · ${stageFor(p.age)[2]} · ${p.identity}｜${p.familyBackground}`;
   const workNames = {not_working: "未记录当前工作", employed: "在职", unemployed: "待业", retired: "已退休"};
+  const careerNames = {general: "普通工作", esports: "职业选手", esports_coach: "电竞训练指导", streamer: "主播 / 内容创作", musician: "音乐工作"};
   const relationshipNames = {single: "单身", dating: "恋爱中", married: "已婚"};
   const housingNames = {with_family: "与家人同住", renting: "租住", owns_home: "自有住房"};
-  $("life-states").textContent = `当前状态：${workNames[p.work.status]} · ${relationshipNames[p.relationship.status]} · ${p.child.hasChild ? `孩子 ${childAge(p)} 岁` : "无孩子"} · ${housingNames[p.housing.status]}`;
+  $("life-states").textContent = `当前状态：${workNames[p.work.status]}${p.work.status === "employed" && careerNames[p.work.careerType] ? `（${careerNames[p.work.careerType]}）` : ""} · ${relationshipNames[p.relationship.status]} · ${p.child.hasChild ? `孩子 ${childAge(p)} 岁` : "无孩子"} · ${housingNames[p.housing.status]}`;
   $("stats").replaceChildren();
   for (const [key, label] of Object.entries(STAT_LABELS)) {
     const wrapper = addText($("stats"), "div", "");
@@ -47,22 +50,29 @@ function render() {
   if (!p.tags.length) addText($("tags"), "span", "还没有标签，人生才刚开始。");
   p.tags.forEach(tag => addText($("tags"), "span", tag, "tag"));
   $("history").replaceChildren();
-  [...p.history].reverse().forEach(item => addText($("history"), "li", `${item.age} 岁 · ${item.year} 年：${item.text}`));
+  [...p.history].reverse().forEach(item => {
+    const row = addText($("history"), "li", "");
+    addText(row, "strong", `${item.age} 岁 · ${item.eventTitle ? `《${item.eventTitle}》` : "这一年"}`);
+    addText(row, "div", `${item.year} 年 · ${item.text}`);
+  });
   if (!p.history.length) addText($("history"), "li", "故事还没有写下第一行。");
   const event = EVENTS.find(item => item.id === state.currentEventId);
   $("choices").replaceChildren();
   $("event-meta").textContent = event && p.alive ? `${p.age} 岁 · 今年第 ${state.resolved ? state.annual.processedCount : state.annual.processedCount + 1} 件事 · ${event.eventTags.join(" / ")}` : "人生的一页";
   $("result").textContent = state.result;
+  $("trigger-reasons").textContent = "";
   if (!p.alive) {
     $("event-title").textContent = "这一生，走到了终点";
     const important = p.history.filter(item => item.importance >= 3).map(item => `${item.age} 岁：${item.text}`);
     $("description").textContent = `你走过了 ${p.age} 年，做出 ${p.history.filter(item => item.eventId).length} 次选择。${important.length ? "回望那些转折——" + important.join(" ") : "平凡的日子也构成了你的一生。"}`;
-    $("result").textContent = "可以翻看人生历史，然后重新投胎。";
+    $("result").textContent = `${p.death.deathYear} 年 · ${p.death.deathReason}。可以翻看人生历史，然后重新投胎。`;
   } else if (event) {
     $("event-title").textContent = event.title;
     // 已选卡片保留当时看到的文案，避免状态变化后把过去的情境重新改写。
     const last = p.history.at(-1);
     $("description").textContent = state.resolved && last?.eventId === event.id && last.eventDescription ? last.eventDescription : describeEvent(event, p);
+    const reasons = state.resolved ? (last?.triggerReasons || []) : triggerReasons(event, p);
+    $("trigger-reasons").textContent = reasons.map(r => `触发原因：${r.text}${DEBUG_MODE ? `（${r.detail}）` : ""}`).join("；");
     if (!state.resolved) event.choices.forEach(choice => {
       const button = addText($("choices"), "button", choice.text);
       button.onclick = () => {

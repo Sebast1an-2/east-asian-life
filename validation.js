@@ -45,6 +45,7 @@ function checkEvents(events, maxEventsPerYear = MAX_EVENTS_PER_YEAR) {
           if (![...BOUNDED_STATS, "money"].includes(key)) error(`${path}.stats.${key}`, "未知属性名");
           if (!isRecord(range) || !Object.keys(range).length || Object.keys(range).some(k => !["min", "max"].includes(k)) || Object.values(range).some(n => !Number.isFinite(n))) error(`${path}.stats.${key}`, "必须包含合法的 min 和/或 max 数值");
           else if (range.min !== undefined && range.max !== undefined && range.min > range.max) error(`${path}.stats.${key}`, "min 不能大于 max");
+          else if (BOUNDED_STATS.includes(key) && Object.values(range).some(n => n < 0 || n > 100)) error(`${path}.stats.${key}`, "0～100属性的条件范围不能越界");
         }
       }
     }
@@ -64,6 +65,28 @@ function checkEvents(events, maxEventsPerYear = MAX_EVENTS_PER_YEAR) {
     if (e.isMajorNode === true && e.repeatable === true && e.cooldown === 0) warnings.push(`${path}：可重复重要节点的 cooldown 为0，仍会被同年去重和年度上限保护，但请确认是否确实需要每年重复。`);
     if (!isAge(e.cooldown)) error(`${path}.cooldown`, "必须是非负整数（年）");
     validateConditions(e.conditions, `${path}.conditions`);
+    if ("statReasons" in e) {
+      if (!isRecord(e.statReasons)) error(path+".statReasons", "必须是属性名与原因文字的对象");
+      else for (const [key, text] of Object.entries(e.statReasons)) {
+        if (key === "autonomy" || !isRecord(e.conditions?.stats) || !Object.hasOwn(e.conditions.stats, key) || !isText(text)) error(path+".statReasons."+key, "必须对应真实的公开属性资格条件，且原因是非空文字");
+      }
+    }
+    if ("weightModifiers" in e) {
+      if (!Array.isArray(e.weightModifiers) || e.weightModifiers.length > 3) error(path+".weightModifiers", "必须是最多3项的属性权重数组");
+      else {
+        let largestWeight = e.weight;
+        e.weightModifiers.forEach((part, i) => {
+          const pp=path+`.weightModifiers[${i}]`;
+          if (!isRecord(part) || Object.keys(part).some(k=>!["stats","multiplier","reason"].includes(k))) {error(pp,"只接受stats、multiplier和可选reason");return;}
+          if (!isRecord(part.stats) || !Object.keys(part.stats).length) error(pp+".stats","必须有真实属性条件");
+          else validateConditions({stats:part.stats},pp);
+          if (!Number.isFinite(part.multiplier) || part.multiplier <= 1 || part.multiplier > 10) error(pp+".multiplier","必须大于1且不超过10");
+          else largestWeight *= part.multiplier;
+          if ("reason" in part && (!isText(part.reason) || Object.hasOwn(part.stats || {},"autonomy"))) error(pp+".reason","原因须为非空文字，不展示隐藏自主性条件");
+        });
+        if (!Number.isFinite(largestWeight)) error(path+".weightModifiers","组合权重溢出");
+      }
+    }
     if ("descriptionDetails" in e) {
       if (!Array.isArray(e.descriptionDetails)) error(`${path}.descriptionDetails`, "必须是条件文案数组");
       else e.descriptionDetails.forEach((part,i)=>{
@@ -121,13 +144,13 @@ function checkEvents(events, maxEventsPerYear = MAX_EVENTS_PER_YEAR) {
   return { errors, warnings };
 }
 function validSave(data) {
-  if (!isRecord(data) || ![1, 2, SAVE_VERSION].includes(data.version) || !isRecord(data.player) || !isRecord(data.world)) return false;
+  if (!isRecord(data) || ![1, 2, 3, SAVE_VERSION].includes(data.version) || !isRecord(data.player) || !isRecord(data.world)) return false;
   const p = data.player, w = data.world;
-  if (!isAge(p.age) || p.age > 80 || !Number.isSafeInteger(p.birthYear) || !Number.isSafeInteger(p.birthYear + p.age)) return false;
+  if (!isAge(p.age) || p.age > (data.version < 4 ? 80 : MAX_LIFE_AGE) || !Number.isSafeInteger(p.birthYear) || !Number.isSafeInteger(p.birthYear + p.age)) return false;
   if (!["name", "gender", "identity", "familyBackground"].every(k => isText(p[k]))) return false;
   if (typeof p.alive !== "boolean" || p.lifeStage !== stageFor(p.age)[1]) return false;
   if (!BOUNDED_STATS.every(k => Number.isFinite(p[k]) && p[k] >= 0 && p[k] <= 100) || !Number.isFinite(p.money)) return false;
-  if (p.alive !== (p.age < 80 && p.health > 0) || !isTextList(p.tags) || !Array.isArray(p.history)) return false;
+  if ((data.version < 4 ? p.alive !== (p.age < 80 && p.health > 0) : !validLifespan(p)) || !isTextList(p.tags) || !Array.isArray(p.history)) return false;
   if (data.version >= 2) {
     if (!validLifeStates(p)) return false;
   } else {
@@ -144,6 +167,7 @@ function validSave(data) {
     if (!isRecord(h) || !isAge(h.age) || h.age > p.age || h.age < previousAge || h.year !== p.birthYear + h.age || !isText(h.text) || !isTextList(h.eventTags) || !isImportance(h.importance)) return false;
     previousAge = h.age;
     if ("eventDescription" in h && !isText(h.eventDescription)) return false;
+    if ("triggerReasons" in h && (!Array.isArray(h.triggerReasons) || h.triggerReasons.length > 2 || !h.triggerReasons.every(r=>isRecord(r) && Object.keys(r).every(k=>["text","detail"].includes(k)) && isText(r.text) && isText(r.detail)))) return false;
     if (h.eventId !== null && (!isText(h.eventId) || !isText(h.eventTitle) || !isText(h.choiceId) || !isText(h.resultText) || !validEffects(h.effects) || !isTextList(h.addTags) || !isTextList(h.removeTags))) return false;
     if (Object.hasOwn(h, "stateChanges")) {
       if (!isRecord(h.stateChanges)) return false;
@@ -163,6 +187,6 @@ function validSave(data) {
     if (data.resolved && (!last || last.age !== p.age || last.eventId !== event.id || !event.choices.some(c => c.id === last.choiceId) || data.result !== last.resultText)) return false;
     if (!data.resolved && (!eligible(event, data.version === 1 ? {...p, ...legacyStateDefaults(p)} : p) || data.result !== "")) return false;
   } else if (data.resolved || data.result !== "") return false;
-  if (data.version === SAVE_VERSION && !validAnnualProgress(data)) return false;
+  if (data.version >= 3 && !validAnnualProgress(data)) return false;
   return true;
 }

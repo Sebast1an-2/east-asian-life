@@ -22,7 +22,10 @@ progress { width: 100%; height: 9px; accent-color: #688969; }
 .tag { display: inline-block; background: #ece8db; border-radius: 20px; padding: 3px 12px; margin: 3px; font-size: 14px; }
 .result { border-left: 3px solid #bb8138; padding-left: 14px; }
 .result:empty { display: none; }
-#history { padding-left: 24px; max-height: 360px; overflow: auto; }
-#history li { padding-bottom: 10px; }
+#history { list-style: none; padding-left: 0; max-height: 360px; overflow: auto; }
+#history li { border-left: 2px solid #dddace; padding: 0 0 14px 14px; margin-left: 4px; }
+#history strong { font-weight: 500; }
+#trigger-reasons { color: #72786c; font-size: 14px; }
+#trigger-reasons:empty { display: none; }
 footer { margin-top: 24px; font-size: 13px; }
 @media (max-width: 480px) { .card { padding: 18px; } .stats { gap: 8px 16px; } }

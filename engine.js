@@ -24,6 +24,7 @@ function matchesConditions(c, player) {
     (range.max === undefined || player[key] <= range.max));
 }
 function eligible(event, player) {
+  if (!player.alive) return false;
   const occurrences = player.history.filter(item => item.eventId === event.id);
   if (!event.repeatable && occurrences.length) return false;
   if (occurrences.length && player.age - occurrences[occurrences.length - 1].age < event.cooldown) return false;
@@ -33,9 +34,25 @@ function eligible(event, player) {
 function describeEvent(event, player) {
   return [event.description, ...(event.descriptionDetails || []).filter(part => matchesConditions(part.conditions, player)).map(part => part.text)].join(" ");
 }
-function pickEvent(player, random = Math.random, candidates = EVENTS) {
+function eventWeight(event, player) {
+  return (event.weightModifiers || []).filter(part => matchesConditions({stats: part.stats}, player))
+    .reduce((weight, part) => weight * part.multiplier, event.weight);
+}
+function triggerReasons(event, player, candidates = EVENTS) {
+  if (!eligible(event, player)) return [];
+  const reasons = [];
+  const detail = stats => Object.entries(stats).filter(([key]) => key !== "autonomy").map(([key, r]) => `${key}${r.min === undefined ? "" : " >= " + r.min}${r.max === undefined ? "" : " <= " + r.max}`).join("；");
+  for (const [key, text] of Object.entries(event.statReasons || {})) {
+    if (key !== "autonomy" && matchesConditions({stats: {[key]: event.conditions.stats[key]}}, player)) reasons.push({text, detail: detail({[key]: event.conditions.stats[key]})});
+  }
+  // 权重只有在最后的抽取池里确有其他候选时才影响机会；单个候选不冒充数值因果。
+  const pool = selectionPool(player, candidates);
+  if (pool.length > 1 && pool.includes(event)) for (const part of event.weightModifiers || []) if (part.reason && !Object.hasOwn(part.stats, "autonomy") && matchesConditions({stats: part.stats}, player)) reasons.push({text: part.reason, detail: detail(part.stats) + `；抽取权重 ×${part.multiplier}`});
+  return reasons.slice(0, 2);
+}
+function selectionPool(player, candidates = EVENTS) {
   let pool = candidates.filter(event => eligible(event, player));
-  if (!pool.length) return null;
+  if (!pool.length) return [];
   const category = Math.max(...pool.map(event => CATEGORY_ORDER[event.category]));
   pool = pool.filter(event => CATEGORY_ORDER[event.category] === category);
   // 必然节点及后续事件按优先级排序；随机事件按权重抽取。
@@ -46,14 +63,21 @@ function pickEvent(player, random = Math.random, candidates = EVENTS) {
   const last = [...player.history].reverse().find(item => item.eventId);
   const varied = pool.filter(event => !event.eventTags.some(tag => (last?.eventTags || []).includes(tag)));
   if (varied.length) pool = varied;
-  let roll = random() * pool.reduce((sum, event) => sum + event.weight, 0);
-  for (const event of pool) { roll -= event.weight; if (roll < 0) return event; }
+  return pool;
+}
+function pickEvent(player, random = Math.random, candidates = EVENTS) {
+  const pool = selectionPool(player, candidates);
+  if (!pool.length) return null;
+  let roll = random() * pool.reduce((sum, event) => sum + eventWeight(event, player), 0);
+  for (const event of pool) { roll -= eventWeight(event, player); if (roll < 0) return event; }
   return pool[pool.length - 1];
 }
 function applyChoice(player, event, choice) {
+  if (!player.alive) throw new Error("人生已结束，不能继续选择");
   // 修改前先检查，失败时连属性和历史也不改变。
   const prepared = prepareStateChanges(player, choice.stateChanges);
   const eventDescription = describeEvent(event, player);
+  const reasons = triggerReasons(event, player);
   const changes = {};
   for (const [key, delta] of Object.entries(choice.effects)) {
     if (![...BOUNDED_STATS, "money"].includes(key)) continue;
@@ -68,8 +92,9 @@ function applyChoice(player, event, choice) {
     eventId: event.id, eventTitle: event.title, eventTags: [...event.eventTags], eventDescription,
     choiceId: choice.id, text: choice.historyText, resultText: choice.resultText,
     effects: changes, addTags: [...choice.addTags], removeTags: [...choice.removeTags], importance: choice.importance,
+    ...(reasons.length ? {triggerReasons: reasons} : {}),
     ...(Object.keys(prepared.changes).length ? {stateChanges: prepared.changes} : {}) });
-  if (player.health <= 0) player.alive = false;
+  if (player.health <= 0) recordDeath(player, "健康严重恶化");
 }
 function advanceYear(player, world) {
   if (!player.alive) return;
@@ -79,8 +104,7 @@ function advanceYear(player, world) {
   if (player.age === 6) player.identity = "小学生";
   if (player.age === 12) player.identity = "初中生";
   if (player.age === 15) player.identity = "高中生";
-  if (player.age === 23) player.identity = "社会新人";
-  if (player.age === 60) player.identity = "退休者";
-  // 原型用固定 80 岁终点验证人生总结；后续可替换为寿命规则。
-  if (player.age >= 80 || player.health <= 0) player.alive = false;
+  if (player.age === 23 && player.work.status !== "employed") player.identity = "社会新人";
+  // 年龄到60不等于自动退休，退休由事件统一修改work状态。
+  checkMortality(player);
 }

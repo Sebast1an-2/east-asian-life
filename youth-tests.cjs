@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const ctx = vm.createContext({});
-for (const file of ['player.js', 'life-state.js', 'events.js', 'events-young.js', 'engine.js', 'annual.js', 'validation.js']) {
+for (const file of ['player.js', 'life-state.js', 'mortality.js', 'events.js', 'events-young.js', 'engine.js', 'annual.js', 'validation.js']) {
   vm.runInContext(fs.readFileSync(file, 'utf8'), ctx, {filename: file});
 }
 const run = source => vm.runInContext(source, ctx);
@@ -233,7 +233,7 @@ for (const [name, policy] of [['high_married_owner', highPolicy], ['balanced_sin
   for (let seed=1;seed<=60;seed++) paths.push(run(`simulateYouth(${seed}, ${JSON.stringify(policy)}, null)`));
   const worst = Math.max(...paths.map(p=>p.maxBlank));
   assert.ok(worst <= 1, name+' 连续空白 '+worst+' 年');
-  assert.ok(paths.every(p=>p.finalAge===80), name+' 人生流程未完成');
+  assert.ok(paths.every(p=>p.finalAge>=60 && p.finalAge<=110), name+' 人生流程未完成');
   results.push(...paths);
   profilePaths[name] = paths;
   console.log('COVERAGE: '+name+', 60 lives, longest blank='+worst+' year(s).');
@@ -272,7 +272,7 @@ for (const [name, fields] of fixtures) {
     const policy = {...balancedPolicy, young_job_search:'wait', young_values:'align', young_commitment:'partner', young_parenthood_plan:'no_child'};
     const result = run(`simulateYouth(${seed}, ${JSON.stringify(policy)}, p => {p.age=24; p.lifeStage=stageFor(24)[1]; Object.assign(p, ${JSON.stringify(fields)});})`);
     worst=Math.max(worst,result.maxBlank);
-    assert.equal(result.finalAge, 80);
+    assert.ok(result.finalAge >= 60 && result.finalAge <= 110);
     if (name === 'unmarried_partner') assert.ok(!result.seen.young_commitment, '主动不婚状态被反复要求选择婚姻');
     if (name === 'owner_with_child') assert.ok(!result.seen.young_parenthood_plan, '已有孩子还被问是否成为父母');
     if (name === 'childfree_married') assert.ok(!result.seen.young_parenthood_plan, '明确不育路线被重新询问');
