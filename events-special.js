@@ -104,7 +104,6 @@ EVENTS.push(
       "text": "接受有限期限的试训合同",
       "resultText": "你进入职业队伍的训练名单，开始靠比赛工作。名额不是冠军保证，也需要给转向留预算。",
       "effects": {
-        "money": 1800,
         "health": -3,
         "stress": 8
       },
@@ -186,14 +185,15 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "你得到一次更好的上场机会和奖金，也开始发现状态不会只听训练时长指挥。",
-      "importance": 2
+      "importance": 2,
+      "monthlyIncome": 8500,
+      "cashReason": "本轮上场的一次性奖金"
     },
     {
       "id": "adjust",
       "text": "调整训练，接受暂时轮换",
       "resultText": "上场少了，收入也少了。你把复盘写清楚，留了一晚真正的休息。",
       "effects": {
-        "money": -300,
         "study": 5,
         "health": 3,
         "stress": -5
@@ -203,7 +203,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "上场少了，收入也少了。你把复盘写清楚，留了一晚真正的休息。",
-      "importance": 2
+      "importance": 2,
+      "monthlyIncome": 6000
     },
     {
       "id": "leave",
@@ -227,7 +228,8 @@ EVENTS.push(
           "status": "unemployed"
         }
       },
-      "identity": "待业者"
+      "identity": "待业者",
+      "cashReason": "合同结束的一次性补偿"
     }
   ],
   "weightModifiers": [
@@ -348,7 +350,6 @@ EVENTS.push(
       "text": "转向简化的训练指导岗位",
       "resultText": "你离开选手名单，开始讲解复盘。工作换了形式，经验没有按退役日期清零。",
       "effects": {
-        "money": 800,
         "stress": -4,
         "study": 3
       },
@@ -376,7 +377,6 @@ EVENTS.push(
       "text": "试着靠直播与内容工作",
       "resultText": "你离开比赛名单，把解释比赛的经验带到镜头前。自由排班，也得面对不稳定的收入。",
       "effects": {
-        "money": 200,
         "stress": -2,
         "autonomy": 4
       },
@@ -403,7 +403,6 @@ EVENTS.push(
       "text": "进入普通岗位，保留游戏",
       "resultText": "你离开职业赛场，在新岗位重新自我介绍。下班可以只打一局，不需要证明自己。",
       "effects": {
-        "money": 600,
         "stress": -5,
         "autonomy": 3
       },
@@ -471,7 +470,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "你花了一个周末，收到一顿饭和一些认真提问。过去的比赛在新的地方有了用处。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "分享经验的路费"
     },
     {
       "id": "own",
@@ -558,7 +558,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "你认真安排下次内容。观众还少，也有人问了一句具体的问题。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "创作准备用品"
     },
     {
       "id": "stop",
@@ -635,7 +636,8 @@ EVENTS.push(
           "workStyle": "flexible"
         }
       },
-      "identity": "主播"
+      "identity": "主播",
+      "cashReason": "创作设备与启动开销"
     },
     {
       "id": "parttime",
@@ -650,7 +652,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "更新慢一点，生活却有另一根支撑。创作不用一次变成全部收入。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "本次内容的一次性分成"
     }
   ],
   "statReasons": {
@@ -695,14 +698,14 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "你得到一笔收入，也必须交付安排。观众的信任不能只靠一句‘家人们’。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "这次商业合作的报酬"
     },
     {
       "id": "decline",
       "text": "婉拒，继续自己的内容",
       "resultText": "你少了一笔收入，保留了表达的方向。自由仍需要支付本月的账单。",
       "effects": {
-        "money": -150,
         "autonomy": 5,
         "happiness": 3
       },
@@ -744,7 +747,6 @@ EVENTS.push(
       "text": "缩短在线时间，公开更新节奏",
       "resultText": "收入少了一点，你有了不需要对着镜头解释的晚上。",
       "effects": {
-        "money": -250,
         "health": 3,
         "stress": -7,
         "autonomy": 3
@@ -754,14 +756,14 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "收入少了一点，你有了不需要对着镜头解释的晚上。",
-      "importance": 2
+      "importance": 2,
+      "monthlyIncome": 3500
     },
     {
       "id": "chase",
       "text": "增加更新，先撑过这次波动",
       "resultText": "流量和报酬回暖，你的睡眠却没有跟着刷新。你仍能在下次重新谈节奏。",
       "effects": {
-        "money": 900,
         "stress": 7,
         "health": -4
       },
@@ -770,7 +772,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "流量和报酬回暖，你的睡眠却没有跟着刷新。你仍能在下次重新谈节奏。",
-      "importance": 2
+      "importance": 2,
+      "monthlyIncome": 6000
     }
   ],
   "weightModifiers": [
@@ -824,7 +827,6 @@ EVENTS.push(
       "text": "减少更新，继续靠内容工作",
       "resultText": "收入缩小，表达没有消失。你把持续创作改成可以长期承受的节奏。",
       "effects": {
-        "money": -300,
         "stress": -6,
         "health": 3
       },
@@ -838,14 +840,14 @@ EVENTS.push(
         "work": {
           "workStyle": "balanced"
         }
-      }
+      },
+      "monthlyIncome": 3000
     },
     {
       "id": "change",
       "text": "换普通岗位，让创作回到副业",
       "resultText": "你在新工作里重新适应，镜头不再负责每个月的全部收入。",
       "effects": {
-        "money": 400,
         "autonomy": 5,
         "stress": -4
       },
@@ -920,7 +922,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "你慢慢能把一首歌连起来。课业和休息需要重新排，乐器也开始留下手的温度。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "乐器与练习用品"
     },
     {
       "id": "listen",
@@ -977,7 +980,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "你们凑钱租了房间。没人知道会走到哪里，但下周有了一件想赴的约。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "排练室分摊费用"
     },
     {
       "id": "solo",
@@ -1034,7 +1038,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "出场费刚够路费。你们终于知道，台上的紧张和排练室的不一样。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "演出的一次性报酬"
     },
     {
       "id": "pause",
@@ -1111,7 +1116,8 @@ EVENTS.push(
           "workStyle": "flexible"
         }
       },
-      "identity": "音乐工作者"
+      "identity": "音乐工作者",
+      "cashReason": "音乐工作的启动开销"
     },
     {
       "id": "side",
@@ -1127,7 +1133,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "你们减少场次，保留相聚。稳定收入和音乐可以在同一个人生里存在。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "排练准备费用"
     }
   ],
   "statReasons": {
@@ -1175,14 +1182,14 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "你们不再每周见面，仍保留一首能一起开始的歌。音乐不需要靠频率证明发生过。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "一次合奏的分摊开销"
     },
     {
       "id": "end",
       "text": "认真结束这一段，让工作换方向",
       "resultText": "大家说好不用把告别叫失败。你进入普通岗位，乐器可以留在家里。",
       "effects": {
-        "money": 400,
         "autonomy": 4,
         "stress": -4
       },
@@ -1245,7 +1252,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "手指不如以前快，声音却还是从自己手里出来。你给今天留了一个位置。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "乐器修整与练习用品"
     },
     {
       "id": "keep",
@@ -1261,7 +1269,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "你照顾这件旧物，没有给自己再添一张进度表。那段音乐仍然存在。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "乐器保养"
     }
   ]
 }

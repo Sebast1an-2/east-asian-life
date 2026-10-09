@@ -1,15 +1,19 @@
 const SAVE_KEY = "east-asian-life-v01";
-const STAT_LABELS = { health: "健康", happiness: "快乐", study: "学业", stress: "压力", family: "家庭关系", money: "金钱" };
+const STAT_LABELS = { health: "健康", happiness: "快乐", study: "学业", stress: "压力", family: "家庭关系", money: "存款 / 净现金" };
 // 地址末尾加 ?debug=1 显示公开属性的精确条件；自主性继续隐藏。
 const DEBUG_MODE = typeof location !== "undefined" && new URLSearchParams(location.search).get("debug") === "1";
 let state = null;
 const $ = id => document.getElementById(id);
+$("data-diagnostics").hidden = true;
+$("data-diagnostics").textContent = "";
 const eventReport = checkEvents(EVENTS);
 if (eventReport.errors.length || eventReport.warnings.length) {
-  $("data-diagnostics").hidden = false;
-  $("data-diagnostics").textContent = ["开发数据检查", ...eventReport.errors.map(x => `错误：${x}`), ...eventReport.warnings.map(x => `警告：${x}`)].join("\n");
-  eventReport.errors.forEach(x => console.error(`[事件数据] ${x}`));
-  eventReport.warnings.forEach(x => console.warn(`[事件数据] ${x}`));
+  if (DEBUG_MODE) {
+    $("data-diagnostics").hidden = false;
+    $("data-diagnostics").textContent = ["开发数据检查", ...eventReport.errors.map(x => `错误：${x}`), ...eventReport.warnings.map(x => `警告：${x}`)].join("\n");
+    eventReport.errors.forEach(x => console.error(`[事件数据] ${x}`));
+    eventReport.warnings.forEach(x => console.warn(`[事件数据] ${x}`));
+  } else if (eventReport.errors.length) $("save-status").textContent = "故事资料暂时无法加载，已有的人生存档仍保留。";
 }
 $("start").disabled = eventReport.errors.length > 0;
 function save() {
@@ -28,17 +32,35 @@ function addText(parent, tag, text, className) {
   if (className) node.className = className;
   parent.append(node); return node;
 }
+function yuan(value) { return `¥ ${value.toLocaleString("zh-CN")}`; }
+function renderLifeSummary(summary) {
+  const box = $("life-summary"), f = summary.facts;
+  addText(box, "h2", "你的一生");
+  addText(box, "p", `${f.name} · ${f.birthYear}—${f.deathYear} · 享年 ${f.deathAge} 岁`);
+  addText(box, "p", `${f.finalCareer} · ${f.relationship} · ${f.housing} · 最终净现金 ${yuan(f.money)}`);
+  if (f.careerPath.length) addText(box, "p", "职业足迹：" + f.careerPath.map(h=>`${h.age}岁 ${h.label}`).join(" → "));
+  addText(box, "p", `最后一页：${f.deathReason}。${summary.recap}`);
+  addText(box, "h3", "这一生的主题");
+  summary.themes.forEach(t=>{addText(box,"strong",t.name,"summary-theme");addText(box,"p",t.reason);});
+  for (const [heading, items] of [["人生轨迹",summary.trajectory],["人生高光",summary.highlights]]) {
+    if (!items.length) continue;
+    addText(box,"h3",heading);
+    const list=addText(box,"ul","","summary-timeline");
+    items.forEach(h=>{const row=addText(list,"li","");addText(row,"strong",`${h.age}岁 · 《${h.title}》`);addText(row,"div",h.text);});
+  }
+  if (summary.unfinished.length) {addText(box,"h3","没有走完的路");summary.unfinished.forEach(h=>addText(box,"p",h.text));}
+  $("life-question").textContent = `${summary.closing}\n\n${summary.question}`;
+}
 function render() {
   $("title-screen").hidden = !!state; $("game").hidden = !state;
   if (!state) return;
   const p = state.player;
   $("profile").textContent = `${p.name} · ${p.gender} · ${p.age} 岁`;
   $("background").textContent = `${state.world.year} 年 · ${stageFor(p.age)[2]} · ${p.identity}｜${p.familyBackground}`;
-  const workNames = {not_working: "未记录当前工作", employed: "在职", unemployed: "待业", retired: "已退休"};
-  const careerNames = {general: "普通工作", esports: "职业选手", esports_coach: "电竞训练指导", streamer: "主播 / 内容创作", musician: "音乐工作"};
-  const relationshipNames = {single: "单身", dating: "恋爱中", married: "已婚"};
-  const housingNames = {with_family: "与家人同住", renting: "租住", owns_home: "自有住房"};
-  $("life-states").textContent = `当前状态：${workNames[p.work.status]}${p.work.status === "employed" && careerNames[p.work.careerType] ? `（${careerNames[p.work.careerType]}）` : ""} · ${relationshipNames[p.relationship.status]} · ${p.child.hasChild ? `孩子 ${childAge(p)} 岁` : "无孩子"} · ${housingNames[p.housing.status]}`;
+  $("life-states").textContent = `当前生活：${p.work.status === "employed" ? "在职 · " : ""}${careerLabel(p.work)} · ${RELATIONSHIP_LABELS[p.relationship.status]} · ${p.child.hasChild ? `孩子 ${childAge(p)} 岁` : "无孩子"} · ${HOUSING_LABELS[p.housing.status]}`;
+  const bill=p.economy.lastSettlement;
+  $("income").textContent = `每月持续收入 ${yuan(p.monthlyIncome)}${p.work.status === "retired" ? "（退休生活收入）" : ""}。${p.money < 0 ? "净现金为负表示尚未覆盖的资金缺口。" : ""}`;
+  $("yearly-money").textContent = bill && bill.age >= 18 ? `${bill.year}年：收入 ${yuan(bill.income)} − 基本生活支出 ${yuan(bill.expenses)}，年度净变化 ${yuan(bill.net)}。事件的一次性收支另记。` : "持续收入与基本生活支出，在长大一岁时结算。";
   $("stats").replaceChildren();
   for (const [key, label] of Object.entries(STAT_LABELS)) {
     const wrapper = addText($("stats"), "div", "");
@@ -47,8 +69,9 @@ function render() {
     if (key !== "money") { const bar = document.createElement("progress"); bar.max = 100; bar.value = p[key]; bar.setAttribute("aria-label", label); wrapper.append(bar); }
   }
   $("tags").replaceChildren();
-  if (!p.tags.length) addText($("tags"), "span", "还没有标签，人生才刚开始。");
-  p.tags.forEach(tag => addText($("tags"), "span", tag, "tag"));
+  const traits=visibleTags(p);
+  if (!traits.length) addText($("tags"), "span", "有些倾向，要走过一些日子才看得见。");
+  traits.forEach(tag => addText($("tags"), "span", tag, "tag"));
   $("history").replaceChildren();
   [...p.history].reverse().forEach(item => {
     const row = addText($("history"), "li", "");
@@ -58,13 +81,19 @@ function render() {
   if (!p.history.length) addText($("history"), "li", "故事还没有写下第一行。");
   const event = EVENTS.find(item => item.id === state.currentEventId);
   $("choices").replaceChildren();
-  $("event-meta").textContent = event && p.alive ? `${p.age} 岁 · 今年第 ${state.resolved ? state.annual.processedCount : state.annual.processedCount + 1} 件事 · ${event.eventTags.join(" / ")}` : "人生的一页";
+  $("event-meta").textContent = event && p.alive ? `${p.age} 岁 · 今年第 ${state.resolved ? state.annual.processedCount : state.annual.processedCount + 1} 件事${DEBUG_MODE ? ` · ${event.id} / ${event.category}` : ""}` : "人生的一页";
   $("result").textContent = state.result;
   $("trigger-reasons").textContent = "";
+  $("event-card").hidden = !p.alive;
+  $("life-summary").hidden = p.alive;
+  $("life-summary").replaceChildren();
+  $("life-question").hidden = p.alive;
+  $("life-question").textContent = "";
   if (!p.alive) {
-    $("event-title").textContent = "这一生，走到了终点";
-    const important = p.history.filter(item => item.importance >= 3).map(item => `${item.age} 岁：${item.text}`);
-    $("description").textContent = `你走过了 ${p.age} 年，做出 ${p.history.filter(item => item.eventId).length} 次选择。${important.length ? "回望那些转折——" + important.join(" ") : "平凡的日子也构成了你的一生。"}`;
+    const summary=buildLifeSummary(p);
+    renderLifeSummary(summary);
+    $("event-title").textContent = "你的一生";
+    $("description").textContent = summary.recap;
     $("result").textContent = `${p.death.deathYear} 年 · ${p.death.deathReason}。可以翻看人生历史，然后重新投胎。`;
   } else if (event) {
     $("event-title").textContent = event.title;
@@ -73,12 +102,16 @@ function render() {
     $("description").textContent = state.resolved && last?.eventId === event.id && last.eventDescription ? last.eventDescription : describeEvent(event, p);
     const reasons = state.resolved ? (last?.triggerReasons || []) : triggerReasons(event, p);
     $("trigger-reasons").textContent = reasons.map(r => `触发原因：${r.text}${DEBUG_MODE ? `（${r.detail}）` : ""}`).join("；");
+    if (state.resolved && last?.eventId === event.id) {
+      if (last.cashReason) $("result").textContent += `\n${last.cashReason}：${yuan(last.effects.money)}。`;
+      if (last.incomeChange) $("result").textContent += `\n持续月收入：${yuan(last.incomeChange.before)} → ${yuan(last.incomeChange.after)}。`;
+    }
     if (!state.resolved) event.choices.forEach(choice => {
       const button = addText($("choices"), "button", choice.text);
       button.onclick = () => {
         if (state.resolved || !state.player.alive) return;
         try { finishAnnualChoice(state, event, choice); }
-        catch (error) { $("save-status").textContent = `选择未执行：${error.message}`; console.error(error); return; }
+        catch (error) { $("save-status").textContent = DEBUG_MODE ? `选择未执行：${error.message}` : "这一选择暂时无法完成，请刷新后再试。"; if (DEBUG_MODE) console.error(error); return; }
         save(); render();
       };
     });
@@ -99,7 +132,7 @@ try {
   if (raw && !eventReport.errors.length) {
     const loaded = JSON.parse(raw);
     state = upgradeSave(loaded);
-    $("save-status").textContent = loaded.version === SAVE_VERSION ? "已恢复上次的人生。" : "已恢复并升级旧存档，保留原事件与历史，下次操作时保存。";
+    $("save-status").textContent = loaded.version === SAVE_VERSION ? "已恢复上次的人生。" : "已接着上次的人生，原有选择和记录都已保留。";
   }
 } catch { state = null; $("save-status").textContent = "存档无法读取。原存档尚未覆盖；点击开始新人生即可重新开始。"; }
 render();

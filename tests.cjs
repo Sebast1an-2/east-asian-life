@@ -11,12 +11,12 @@ class Element {
 const nodes = new Map();
 const storage = new Map();
 // 原有回归测试保持仅加载首批 8 个事件，后面单独验证扩充后的完整库。
-function context(beforeApp = 'EVENTS.splice(8);', logger = console, includeYoung = false, includeMiddle = false) {
-  const ctx = vm.createContext({ console: logger, document: {
+function context(beforeApp = 'EVENTS.splice(8);', logger = console, includeYoung = false, includeMiddle = false, debug = false) {
+  const ctx = vm.createContext({ console: logger, URLSearchParams, location:{search:debug?'?debug=1':''}, document: {
     getElementById(id) { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); },
     createElement() { return new Element(); }
   }, localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) }, confirm: () => true });
-  const files = ['player.js', 'life-state.js', 'mortality.js', 'events.js', ...(includeYoung ? ['events-young.js'] : []), ...(includeMiddle ? ['events-middle.js'] : []), 'engine.js', 'annual.js', 'validation.js', 'app.js'];
+  const files = ['player.js', 'life-state.js', 'mortality.js','economy.js','tags.js', 'events.js', ...(includeYoung ? ['events-young.js'] : []), ...(includeMiddle ? ['events-middle.js'] : []), 'engine.js', 'annual.js', 'validation.js','summary.js', 'app.js'];
   for (const file of files) {
     if (file === 'app.js' && beforeApp) vm.runInContext(beforeApp, ctx);
     vm.runInContext(fs.readFileSync(file, 'utf8'), ctx, { filename: file });
@@ -161,14 +161,14 @@ ctx = context();
 assert.equal(run('state.player.alive'), false);
 
 const reported = [];
-ctx = context('EVENTS[0].weight = 0;', {error: x => reported.push(x), warn: x => reported.push(x)});
+ctx = context('EVENTS[0].weight = 0;', {error: x => reported.push(x), warn: x => reported.push(x)}, false, false, true);
 assert.equal(nodes.get('start').disabled, true);
 assert.equal(nodes.get('data-diagnostics').hidden, false);
 assert.match(nodes.get('data-diagnostics').textContent, /birth.*weight/);
 nodes.get('start').onclick();
 assert.equal(run('state'), null);
 assert.ok(reported.length);
-ctx = context(`EVENTS.push({...EVENTS[0], id: 'other_birth'});`, {error() {}, warn: x => reported.push(x)});
+ctx = context(`EVENTS.push({...EVENTS[0], id: 'other_birth'});`, {error() {}, warn: x => reported.push(x)}, false, false, true);
 assert.equal(nodes.get('start').disabled, false);
 assert.match(nodes.get('data-diagnostics').textContent, /开发审查提醒（不一定是错误）/);
 console.log('PASS: invalid event fields, milestone conflicts, both choice paths, valid old saves, malformed-save recovery, preserved storage and visible startup diagnostics.');
@@ -257,8 +257,8 @@ run(`{
   applyChoice(p, job, job.choices[0]);
   expect(p.work.status === 'employed' && p.work.startYear === 2023 && p.work.workStyle === 'balanced', '工作状态或年份错误');
   expect(p.history[0].stateChanges.work.before.status === 'not_working' && p.history[0].stateChanges.work.after.status === 'employed', '就业历史缺少前后状态');
-  let changeNumber = 0;
-  const change = patch => applyChoice(p, {...job, id: 'state_test_' + ++changeNumber}, {...job.choices[0], effects: {}, addTags: [], removeTags: [], stateChanges: patch});
+  let changeNumber = 0; const {monthlyIncome, ...baseStateChoice} = job.choices[0];
+  const change = patch => applyChoice(p, {...job, id: 'state_test_' + ++changeNumber}, {...baseStateChoice, effects: {}, addTags: [], removeTags: [], stateChanges: patch});
   const saved = () => ({version: 2, player: p, world: {...createWorld(), year: p.birthYear + p.age}, currentEventId: null, resolved: false, result: ''});
   change({work: {level: 2}});
   expect(p.work.startYear === 2023 && p.work.level === 2, '岗位更新覆盖了就业开始年份');
@@ -327,7 +327,7 @@ const legacyRaw = run(`(() => {
 })()`);
 storage.set('east-asian-life-v01', legacyRaw);
 ctx = context('');
-assert.equal(run('state.version'), 4);
+assert.equal(run('state.version'), 5);
 assert.equal(run('state.player.work.status'), 'not_working');
 assert.equal(run('state.player.relationship.status'), 'single');
 assert.equal(run('state.player.child.hasChild'), false);
@@ -337,7 +337,7 @@ assert.equal(storage.get('east-asian-life-v01'), legacyRaw, '升级读取不立�
 assert.equal(run('validSave(state)'), true);
 assert.equal(run('JSON.stringify(upgradeSave(state)) === JSON.stringify(state)'), true, '重复升级应保持一致');
 nodes.get('grow').onclick();
-assert.equal(JSON.parse(storage.get('east-asian-life-v01')).version, 4);
+assert.equal(JSON.parse(storage.get('east-asian-life-v01')).version, 5);
 
 const version2Raw = storage.get('east-asian-life-v01');
 for (const mutation of ['delete data.player.work', 'data.player.relationship = null',
@@ -356,7 +356,7 @@ ctx = context('');
 assert.equal(run('state'), null);
 storage.set('east-asian-life-v01', version2Raw);
 ctx = context('');
-assert.equal(run('state.version'), 4);
+assert.equal(run('state.version'), 5);
 console.log('PASS: choice-specific branches, exclusion conditions, state filters, employment/relationships/child/housing, atomic rejection, state-change history, V1 migration and V2 restoration.');
 
 // 旧存档的待选、已结束和部分新字段情况同样要可恢复。
@@ -372,7 +372,7 @@ const legacyCases = run(`(() => {
 })()`);
 for (const raw of legacyCases) {
   storage.set('east-asian-life-v01', raw); ctx = context('');
-  assert.equal(run('state.version'), 4);
+  assert.equal(run('state.version'), 5);
   assert.equal(run('validSave(state)'), true);
   assert.equal(run('state.player.child.birthYear'), null);
   assert.equal(storage.get('east-asian-life-v01'), raw);
@@ -535,7 +535,7 @@ for (const mutation of ['delete data.annual', 'data.annual.year = 2099', 'data.a
 storage.clear(); ctx = context(''); nodes.get('start').onclick(); nodes.get('choices').children[0].onclick();
 const v2Raw = run('(() => {const old = JSON.parse(JSON.stringify(state)); old.version = 2; delete old.annual; return JSON.stringify(old);})()');
 storage.set('east-asian-life-v01', v2Raw); ctx = context('');
-assert.equal(run('state.version'), 4);
+assert.equal(run('state.version'), 5);
 assert.equal(run('state.annual.mainEventDrawn'), true);
 assert.equal(run('state.annual.processedCount'), 1);
 assert.equal(run('state.currentEventId'), 'birth');
@@ -614,3 +614,5 @@ assert.ok(run('state.player.history.some(h=>h.eventId?.startsWith("mid_"))'));
 console.log('PASS: full 68-event UI life, pending/resolved description and choice reloads, current states and annual progress.');
 require('./middle-tests.cjs');
 require('./late-tests.cjs');
+
+require('./final-tests.cjs');

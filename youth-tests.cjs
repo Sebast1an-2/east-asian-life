@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const ctx = vm.createContext({});
-for (const file of ['player.js', 'life-state.js', 'mortality.js', 'events.js', 'events-young.js', 'engine.js', 'annual.js', 'validation.js']) {
+for (const file of ['player.js', 'life-state.js', 'mortality.js','economy.js','tags.js', 'events.js', 'events-young.js', 'engine.js', 'annual.js', 'validation.js','summary.js']) {
   vm.runInContext(fs.readFileSync(file, 'utf8'), ctx, {filename: file});
 }
 const run = source => vm.runInContext(source, ctx);
@@ -61,7 +61,7 @@ run(`{
   expect(!eligible(event('young_values'), broken) && !eligible(event('young_commitment'), broken) && !eligible(event('young_married_daily'), broken), '分手后旧关系节点仍出现');
   expect(eligible(event('young_single_life'), broken), '分手后没有独立生活后续');
 
-  const housing = () => {const q = createPlayer(); setAge(q, 24); choose(q, 'young_move_out', 'rent'); setAge(q, 29); q.money = 6000; return q;};
+  const housing = () => {const q = createPlayer(); setAge(q, 24); choose(q, 'young_move_out', 'rent'); setAge(q, 29); q.money = 150000; return q;};
   const renter = housing(), owner = housing();
   choose(renter, 'young_housing_choice', 'keep_renting'); choose(owner, 'young_housing_choice', 'buy');
   setAge(renter, 30); setAge(owner, 30);
@@ -156,9 +156,9 @@ run(`{
   const restored=upgradeSave(JSON.parse(JSON.stringify(move))); expect(restored.currentEventId==='young_decision_echo' && validSave(restored),'回声待选刷新失败');
   finish(move,'joint_plan');
 
-  const owner=createPlayer(); age(owner,32); owner.money=6000; owner.housing.status='owns_home';
+  const owner=createPlayer(); age(owner,32); owner.money=150000; owner.housing.status='owns_home';
   expect(!owner.tags.includes('已讨论住房') && !eligible(event('young_housing_choice'),owner),'缺少住房标签的房主仍被问是否买房');
-  const renter=createPlayer(); age(renter,29); renter.money=6000; renter.housing.status='renting';
+  const renter=createPlayer(); age(renter,29); renter.money=150000; renter.housing.status='renting';
   choose(renter,'young_housing_choice','keep_renting'); age(renter,30); choose(renter,'young_rent','reconsider');
   age(renter,31); expect(!eligible(event('young_housing_choice'),renter),'重开讨论绕过冷却');
   age(renter,34); expect(eligible(event('young_housing_choice'),renter),'继续租住不能在较晚年份重新考虑');

@@ -1,5 +1,5 @@
 // 当前情况单独存放；过去的经历仍保存在 History 中。
-const SAVE_VERSION = 4;
+const SAVE_VERSION = 5;
 const LIFE_STATE_FIELDS = {
   work: { status: ["not_working", "employed", "unemployed", "retired"], careerType: "textOrNull", level: "level", workStyle: [null, "stable", "balanced", "high_pressure", "flexible"], startYear: "yearOrNull" },
   relationship: { status: ["single", "dating", "married"], startYear: "yearOrNull" },
@@ -88,7 +88,7 @@ function legacyStateDefaults(player) {
   return Object.fromEntries(Object.entries(createLifeStates()).map(([group, defaults]) => [group, {...defaults, ...(player[group] || {})}]));
 }
 function upgradeSave(data) {
-  if (!isRecord(data) || ![1, 2, 3, SAVE_VERSION].includes(data.version)) throw new Error("不支持的存档版本");
+  if (!isRecord(data) || ![1, 2, 3, 4, SAVE_VERSION].includes(data.version)) throw new Error("不支持的存档版本");
   // 内容保护也适用于旧版本的尚未选择卡片。验证其余内容后才可撤下，不丢历史。
   if (!validSave(data) && data.currentEventId && data.resolved === false && data.result === "" && data.player?.alive === true) {
     const event = EVENTS.find(e => e.id === data.currentEventId);
@@ -114,9 +114,14 @@ function upgradeSave(data) {
   // 旧版本当年已经抽过主要事件。只从真实历史恢复完成数，绝不重抽。
   if (data.version < 3) upgraded.annual = createAnnualProgress(upgraded.player);
   // 用原存档内容生成稳定种子。反复读取同一个旧档得到同一个结果，不凭空补人生经历。
-  upgraded.player.lifespan = createLifespan(stableSeed(JSON.stringify(data)), upgraded.player.age);
-  upgraded.player.death = null;
-  if (!upgraded.player.alive) recordDeath(upgraded.player, upgraded.player.health === 0 ? "健康严重恶化" : "自然寿命终点");
+  if (data.version < 4) {
+    upgraded.player.lifespan = createLifespan(stableSeed(JSON.stringify(data)), upgraded.player.age);
+    upgraded.player.death = null;
+    if (!upgraded.player.alive) recordDeath(upgraded.player, upgraded.player.health === 0 ? "健康严重恶化" : "自然寿命终点");
+  }
+  // 保留旧净现金、住房、标签与历史，不补往年工资，也不追扣旧购房支出。
+  upgraded.player.monthlyIncome = defaultMonthlyIncome(upgraded.player.work);
+  upgraded.player.economy = createEconomy(upgraded.player.age);
   upgraded.version = SAVE_VERSION;
   if (!validSave(upgraded)) throw new Error("升级后存档无效");
   return upgraded;

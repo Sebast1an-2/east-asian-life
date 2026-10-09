@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const ctx = vm.createContext({});
-for (const file of ['player.js','life-state.js', 'mortality.js','events.js','events-young.js','events-middle.js','engine.js','annual.js','validation.js']) vm.runInContext(fs.readFileSync(file,'utf8'),ctx,{filename:file});
+for (const file of ['player.js','life-state.js', 'mortality.js','economy.js','tags.js','events.js','events-young.js','events-middle.js','engine.js','annual.js','validation.js','summary.js']) vm.runInContext(fs.readFileSync(file,'utf8'),ctx,{filename:file});
 const run = source => vm.runInContext(source,ctx);
 const report=run('checkEvents(EVENTS)');
 assert.equal(run('EVENTS.length'),68);
@@ -194,7 +194,7 @@ for(const [name,fields,policy] of fixtures){
       if(f.relationship)p.relationship={status:f.relationship,startYear:2030};
       if(f.childYear)p.child={hasChild:true,birthYear:f.childYear};
       if(f.housing)p.housing={status:f.housing};p.tags.push(...(f.tags||[]));
-      return middleSimulation(${seed},p,${JSON.stringify({...healthy,...policy})});})()`);
+      p.monthlyIncome=defaultMonthlyIncome(p.work); return middleSimulation(${seed},p,${JSON.stringify({...healthy,...policy})});})()`);
     assert.ok(result.finalAge >= 60 && result.finalAge <= 110);longest=Math.max(longest,result.maxBlank);
     const ids=Object.keys(result.seen).filter(id=>id.startsWith('mid_'));
     minDistinct=Math.min(minDistinct,ids.length);minEchoes=Math.min(minEchoes,echoes.filter(([id])=>ids.includes(id)).length);

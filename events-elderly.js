@@ -27,9 +27,8 @@ EVENTS.push(
     {
       "id": "retire",
       "text": "正式离开工作，重新安排生活",
-      "resultText": "你办理了退休，把常用的联系方式留好。时间多了，新的安排需要慢慢找。",
+      "resultText": "你办理了退休，把常用联系方式留好。简化退休生活收入每月1800元，新的时间安排需要慢慢找。",
       "effects": {
-        "money": 1000,
         "stress": -8,
         "happiness": 3
       },
@@ -53,7 +52,6 @@ EVENTS.push(
       "text": "减少工作，先把任务交接出去",
       "resultText": "你暂时保留工作，减少忙碌。不必在一夜之间从所有事情里消失。",
       "effects": {
-        "money": -200,
         "stress": -5,
         "health": 2
       },
@@ -67,7 +65,8 @@ EVENTS.push(
         "work": {
           "workStyle": "balanced"
         }
-      }
+      },
+      "monthlyIncome": 2400
     }
   ],
   "isMajorNode": true
@@ -100,7 +99,6 @@ EVENTS.push(
       "text": "保留少量工作，限定时间",
       "resultText": "经验换来一些报酬，你也留出自己的安排。工作不必重新占满一周。",
       "effects": {
-        "money": 300,
         "stress": 2,
         "autonomy": 3
       },
@@ -114,7 +112,8 @@ EVENTS.push(
         "work": {
           "workStyle": "balanced"
         }
-      }
+      },
+      "monthlyIncome": 2000
     },
     {
       "id": "finish",
@@ -194,7 +193,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "有了赴约的理由，也要配合别人的时间。生活重新长出一些轻松的牵挂。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "一起活动的费用"
     }
   ]
 },
@@ -230,7 +230,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "你听到一些新名字，也花了一点路费。聊不来的人仍可以礼貌告别。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "社区活动与路费"
     },
     {
       "id": "own",
@@ -280,7 +281,8 @@ EVENTS.push(
       "addTags": [],
       "removeTags": [],
       "historyText": "你花钱调整用品，也承认休息是日程的一部分。今天还可以走到想去的地方。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "舒适用品与活动安排"
     },
     {
       "id": "accompany",
@@ -295,7 +297,8 @@ EVENTS.push(
       "addTags": [],
       "removeTags": [],
       "historyText": "速度放缓了，也多听到一段别人的故事。你们约好累了就坐下。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "同行路费"
     }
   ],
   "weightModifiers": [
@@ -343,7 +346,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "你学得慢一点，也笑得真实。喜欢一件事不用附带一个成功证明。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "兴趣学习费用"
     },
     {
       "id": "watch",
@@ -433,7 +437,8 @@ EVENTS.push(
       "addTags": [],
       "removeTags": [],
       "historyText": "有的人仍联系，有的人新近认识。你们不需要每次都证明年轻时有多厉害。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "朋友见面开销"
     },
     {
       "id": "call",
@@ -509,7 +514,8 @@ EVENTS.push(
       "addTags": [],
       "removeTags": [],
       "historyText": "你们各让出一点安排，找到了一个都能接受的下午。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "共同活动费用"
     },
     {
       "id": "space",
@@ -583,7 +589,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "你说明想有人陪着办的事，也接受对方不是随时有空。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "办事与联系开销"
     }
   ],
   "weightModifiers": [
@@ -814,7 +821,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "你们节奏没有完全对齐，笑声倒是一致。没有宣布复出，只认真玩了一首歌。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "再合奏的路费与准备费用"
     },
     {
       "id": "send",
@@ -897,7 +905,7 @@ EVENTS.push(
     {
       "id": "rest",
       "text": "减少一个安排，给休息付出实际时间",
-      "resultText": "你推迟了一件事，也少赚一点。休息终于不只是待办事项的最后一行。",
+      "resultText": "你推迟了一件事，花一点钱安排真正的休息。休息终于不只是待办事项的最后一行。",
       "effects": {
         "stress": -12,
         "health": 4,
@@ -908,7 +916,8 @@ EVENTS.push(
       ],
       "removeTags": [],
       "historyText": "你推迟了一件事，也少赚一点。休息终于不只是待办事项的最后一行。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "休息活动费用"
     },
     {
       "id": "support",
@@ -964,7 +973,8 @@ EVENTS.push(
       "addTags": [],
       "removeTags": [],
       "historyText": "你花钱和时间照顾自己，没有立刻恢复所有精力。新的节奏需要持续。",
-      "importance": 2
+      "importance": 2,
+      "cashReason": "检查与休息安排费用"
     },
     {
       "id": "reduce",

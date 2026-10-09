@@ -76,6 +76,8 @@ function applyChoice(player, event, choice) {
   if (!player.alive) throw new Error("人生已结束，不能继续选择");
   // 修改前先检查，失败时连属性和历史也不改变。
   const prepared = prepareStateChanges(player, choice.stateChanges);
+  const incomeBefore = player.monthlyIncome;
+  const incomeAfter = prepareIncome(player, prepared.next, choice);
   const eventDescription = describeEvent(event, player);
   const reasons = triggerReasons(event, player);
   const changes = {};
@@ -88,16 +90,20 @@ function applyChoice(player, event, choice) {
   player.tags = [...new Set([...player.tags.filter(tag => !choice.removeTags.includes(tag)), ...choice.addTags])];
   if (choice.identity) player.identity = choice.identity;
   for (const group of Object.keys(prepared.changes)) player[group] = prepared.next[group];
+  player.monthlyIncome = incomeAfter;
   player.history.push({ age: player.age, year: player.birthYear + player.age,
     eventId: event.id, eventTitle: event.title, eventTags: [...event.eventTags], eventDescription,
     choiceId: choice.id, text: choice.historyText, resultText: choice.resultText,
     effects: changes, addTags: [...choice.addTags], removeTags: [...choice.removeTags], importance: choice.importance,
     ...(reasons.length ? {triggerReasons: reasons} : {}),
+    ...(incomeBefore !== incomeAfter ? {incomeChange: {before: incomeBefore, after: incomeAfter}} : {}),
+    ...(choice.cashReason && changes.money ? {cashReason: choice.cashReason} : {}),
     ...(Object.keys(prepared.changes).length ? {stateChanges: prepared.changes} : {}) });
   if (player.health <= 0) recordDeath(player, "健康严重恶化");
 }
 function advanceYear(player, world) {
   if (!player.alive) return;
+  settleYear(player); // 离开这一年才结算，同年追加、选择和刷新都不重复支付工资。
   player.age += 1;
   world.year = player.birthYear + player.age;
   player.lifeStage = stageFor(player.age)[1];

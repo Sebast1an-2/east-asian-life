@@ -22,6 +22,11 @@ progress { width: 100%; height: 9px; accent-color: #688969; }
 .tag { display: inline-block; background: #ece8db; border-radius: 20px; padding: 3px 12px; margin: 3px; font-size: 14px; }
 .result { border-left: 3px solid #bb8138; padding-left: 14px; }
 .result:empty { display: none; }
+.result, #life-question { white-space: pre-line; }
+.summary-timeline { list-style: none; padding: 0; }
+.summary-timeline li { border-left: 2px solid #dddace; padding: 0 0 14px 14px; }
+.summary-theme { display: inline-block; padding: 3px 12px; background: #ece8db; border-radius: 12px; }
+#income, #yearly-money { font-size: 14px; color: #72786c; }
 #history { list-style: none; padding-left: 0; max-height: 360px; overflow: auto; }
 #history li { border-left: 2px solid #dddace; padding: 0 0 14px 14px; margin-left: 4px; }
 #history strong { font-weight: 500; }

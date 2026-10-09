@@ -109,6 +109,9 @@ function checkEvents(events, maxEventsPerYear = MAX_EVENTS_PER_YEAR) {
       if (!isImportance(choice.importance)) error(`${cp}.importance`, "必须是 0～3 的整数");
       if ("identity" in choice && !isText(choice.identity)) error(`${cp}.identity`, "必须是非空文字");
       if ("stateChanges" in choice) stateFormatErrors(choice.stateChanges, "changes").forEach(message => error(`${cp}.stateChanges`, message));
+      if ("monthlyIncome" in choice && (!validMonthlyIncome(choice.monthlyIncome) || (choice.stateChanges?.work?.status && !["employed", "retired"].includes(choice.stateChanges.work.status) && choice.monthlyIncome !== 0))) error(cp+".monthlyIncome", "必须为合法非负月收入，且与明确的工作状态一致");
+      if ("cashReason" in choice && !isText(choice.cashReason)) error(cp+".cashReason", "须说明一次性资金来源或支出");
+      if (choice.effects?.money && !isText(choice.cashReason)) error(cp+".cashReason", "一次性现金变化须说明来源或用途");
     });
   });
   // 主条件和文案条件的事件/选择引用都必须真实存在。
@@ -144,7 +147,7 @@ function checkEvents(events, maxEventsPerYear = MAX_EVENTS_PER_YEAR) {
   return { errors, warnings };
 }
 function validSave(data) {
-  if (!isRecord(data) || ![1, 2, 3, SAVE_VERSION].includes(data.version) || !isRecord(data.player) || !isRecord(data.world)) return false;
+  if (!isRecord(data) || ![1, 2, 3, 4, SAVE_VERSION].includes(data.version) || !isRecord(data.player) || !isRecord(data.world)) return false;
   const p = data.player, w = data.world;
   if (!isAge(p.age) || p.age > (data.version < 4 ? 80 : MAX_LIFE_AGE) || !Number.isSafeInteger(p.birthYear) || !Number.isSafeInteger(p.birthYear + p.age)) return false;
   if (!["name", "gender", "identity", "familyBackground"].every(k => isText(p[k]))) return false;
@@ -161,6 +164,7 @@ function validSave(data) {
     }
     if (!validLifeStates({...p, ...legacyStates})) return false;
   }
+  if (data.version >= 5 && !validEconomy(p)) return false;
   if (!isText(w.name) || w.year !== p.birthYear + p.age || !Array.isArray(w.npcs)) return false;
   let previousAge = -1;
   for (const h of p.history) {
@@ -168,6 +172,8 @@ function validSave(data) {
     previousAge = h.age;
     if ("eventDescription" in h && !isText(h.eventDescription)) return false;
     if ("triggerReasons" in h && (!Array.isArray(h.triggerReasons) || h.triggerReasons.length > 2 || !h.triggerReasons.every(r=>isRecord(r) && Object.keys(r).every(k=>["text","detail"].includes(k)) && isText(r.text) && isText(r.detail)))) return false;
+    if ("incomeChange" in h && (!isRecord(h.incomeChange) || Object.keys(h.incomeChange).length !== 2 || !validMonthlyIncome(h.incomeChange.before) || !validMonthlyIncome(h.incomeChange.after))) return false;
+    if ("cashReason" in h && !isText(h.cashReason)) return false;
     if (h.eventId !== null && (!isText(h.eventId) || !isText(h.eventTitle) || !isText(h.choiceId) || !isText(h.resultText) || !validEffects(h.effects) || !isTextList(h.addTags) || !isTextList(h.removeTags))) return false;
     if (Object.hasOwn(h, "stateChanges")) {
       if (!isRecord(h.stateChanges)) return false;

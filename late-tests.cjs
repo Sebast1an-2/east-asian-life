@@ -1,7 +1,7 @@
 // 阶段5：用真实选择、真实年度引擎及简易DOM检查路线、属性提示和寿命。
 // 无外部依赖；node tests.cjs 会调用本文件，也可 node late-tests.cjs 单独运行。
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const files=['player.js','life-state.js','mortality.js','events.js','events-young.js','events-middle.js','events-special.js','events-elderly.js','engine.js','annual.js','validation.js'];
+const files=['player.js','life-state.js','mortality.js','economy.js','tags.js','events.js','events-young.js','events-middle.js','events-special.js','events-elderly.js','engine.js','annual.js','validation.js','summary.js'];
 const ctx=vm.createContext({});
 for(const file of files)vm.runInContext(fs.readFileSync(file,'utf8'),ctx,{filename:file});
 const run=code=>vm.runInContext(code,ctx);
@@ -36,7 +36,7 @@ function streamPast(){
 function ordinaryPast(style='balanced'){
  const p=createPlayer();chosen(p,'first_job',style==='high_pressure'?'flexible':'steady',23);return p;
 }
-function simulation(seed,p=createPlayer(),policy={}){
+function simulation(seed,p=createPlayer(),policy={},firstChoices=false){
  p.lifespan=createLifespan(seed,p.age);
  let value=seed;const random=()=>{value=(Math.imul(value,1664525)+1013904223)>>>0;return value/4294967296;};
  let s={version:SAVE_VERSION,player:p,world:{...createWorld(),year:p.birthYear+p.age},currentEventId:null,resolved:false,result:''};
@@ -47,7 +47,7 @@ function simulation(seed,p=createPlayer(),policy={}){
   const before=JSON.stringify(s);s=upgradeSave(JSON.parse(before));expect(JSON.stringify(s)===before,'选择前刷新变化');
   const e=ev(s.currentEventId);
   if(e&&!s.resolved){
-   const c=e.choices.find(c=>c.id===policy[e.id])||e.choices[Math.floor(random()*e.choices.length)];
+   const c=e.choices.find(c=>c.id===policy[e.id])||(firstChoices?e.choices[0]:e.choices[Math.floor(random()*e.choices.length)]);
    finishAnnualChoice(s,e,c);seen[e.id]=(seen[e.id]||0)+1;(years[s.player.age]||=[]).push(e.id);
    trace.push({age:s.player.age,event:e.id,choice:c.id});
   }
@@ -95,7 +95,7 @@ run(`{
  const band=musicPast();expect(band.work.careerType==='musician','未进入音乐工作');
  chosen(band,'band_changes','end',30);expect(band.work.careerType==='general'&&!band.tags.includes('认真玩过乐队'),'乐队不能退出');
  chosen(band,'band_return','again',45);age(band,65);expect(eligible(ev('late_band_echo'),band),'解散后失去乐队回声');
- const hobby=musicPast();hobby.history=hobby.history.filter(h=>h.eventId!=='band_direction');hobby.work=createLifeStates().work;
+ const hobby=musicPast();hobby.history=hobby.history.filter(h=>h.eventId!=='band_direction');hobby.work=createLifeStates().work;hobby.monthlyIncome=0;
  chosen(hobby,'band_direction','side',24);expect(hobby.work.status==='not_working','音乐副业强制就业');
  const nobody=createPlayer();age(nobody,65);
  for(const id of ['late_esports_echo','late_stream_echo','late_band_echo'])expect(!eligible(ev(id),nobody),'伪造职业回忆 '+id);
@@ -160,7 +160,7 @@ run(`{
   if(version===1){for(const group of Object.keys(LIFE_STATE_FIELDS))delete p[group];for(const h of p.history)delete h.stateChanges;}
   expect(validSave(s),'合法旧档不能验证 '+version);
   const a=upgradeSave(JSON.parse(JSON.stringify(s))),b=upgradeSave(JSON.parse(JSON.stringify(s)));
-  expect(a.version===4&&validSave(a)&&JSON.stringify(a)===JSON.stringify(b),'升级不稳定 '+version);
+  expect(a.version===SAVE_VERSION&&validSave(a)&&JSON.stringify(a)===JSON.stringify(b),'升级不稳定 '+version);
   expect(a.player.history[0].choiceId==='steady'&&a.player.child.hasChild===false&&a.annual.mainEventDrawn,'升级丢失选择或虚构家人');
   if(version>=2)expect(a.player.work.startYear===2023,'升级改写工作年份');
   if(version===3)expect(JSON.stringify(a.annual)===JSON.stringify(s.annual),'V3丢失年度进度');
@@ -179,7 +179,7 @@ for(const mutation of [
 "e.weightModifiers=[{stats:{stress:{min:60}},multiplier:2,reason:''}]",
 "e.weightModifiers=[{stats:{autonomy:{min:60}},multiplier:2,reason:'hidden'}]"
 ])assert.ok(run(`(()=>{const e=JSON.parse(JSON.stringify(EVENTS[0]));${mutation};return checkEvents([e,...EVENTS.slice(1)]).errors.length;})()`)>0,mutation);
-console.log('PASS: V1/V2/V3-to-V4 stable migration, original ended lives preserved, invalid seed/death/reason/modifier validation.');
+console.log('PASS: V1/V2/V3-to-current stable migration, original ended lives preserved, invalid seed/death/reason/modifier validation.');
 // 不同晚年状态，每种24个固定寿命种子。从实际职业历史构造，无child也有足够内容。
 const fixtures=[
 ['ordinary','ordinaryPast()',{}],['high_pressure',"ordinaryPast('high_pressure')",{}],
@@ -215,9 +215,14 @@ for(let seed=1;seed<=180;seed++){
  assert.equal(result.maxBlank,0,'完整人生晚年内容断层');
  for(const id of Object.keys(result.seen)){counts[id]=(counts[id]||0)+1;reached.add(id);witness[id] ||= result.trace.filter(h=>h.event===id);}
 }
+// 各路线单独验证：同时坚持直播/乐队会合理改变职业，不能要求一局兼任所有职业。
+for(let seed=1;seed<=20;seed++){
+ const result=run('simulation('+seed+',createPlayer(),'+JSON.stringify({...healthy,caught_gaming:'agree',esports_amateur:'practice',esports_trial:'join',esports_season:'adjust',esports_transition:'coach',band_instrument:'listen',stream_first:'stop',young_meet:'single'})+',true)');
+ for(const id of Object.keys(result.seen))reached.add(id);
+}
 const added=run('EVENTS.slice(68).map(e=>e.id)'),missing=added.filter(id=>!reached.has(id));
 assert.deepEqual(Array.from(missing),[],'阶段5不可达候选 '+missing.join(','));
-console.log('PASS: 180 full birth-to-death lives + 360 late-state lives, all 32 additions reachable; no living-year blanks after60.');
+console.log('PASS: 200 full birth-to-death lives + 360 late-state lives, all 32 additions reachable; no living-year blanks after60.');
 // 普通/开发UI、解释刷新、无序号时间线和完整100事件按钮流程。
 class Element{constructor(){this.children=[];this.textContent='';}append(n){this.children.push(n);}replaceChildren(){this.children=[];}setAttribute(){}}
 const storage=new Map();
@@ -252,4 +257,4 @@ assert.match(u.nodes.get('result').textContent,/自然寿命终点|健康严重�
 assert.ok(fs.readFileSync('index.html','utf8').includes('<ul id="history">'));
 assert.ok(/#history\s*{[^}]*list-style:\s*none/.test(fs.readFileSync('style.css','utf8')));
 console.log('PASS: full100-event mock DOM UI, normal/debug truthful reasons, before/after-choice reloads, death refresh, unnumbered history.');
-console.log('STAGE5 PASS: errors='+report.errors.length+', warnings='+report.warnings.length+'; no stage6 summary system.');
+console.log('STAGE5 PASS: errors='+report.errors.length+', warnings='+report.warnings.length+'; stage5 regression suite.');
