@@ -10,7 +10,8 @@ class Element {
 }
 const nodes = new Map();
 const storage = new Map();
-function context(beforeApp = '', logger = console) {
+// 原有回归测试保持仅加载首批 8 个事件，后面单独验证扩充后的完整库。
+function context(beforeApp = 'EVENTS.splice(8);', logger = console) {
   const ctx = vm.createContext({ console: logger, document: {
     getElementById(id) { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); },
     createElement() { return new Element(); }
@@ -170,3 +171,61 @@ ctx = context(`EVENTS.push({...EVENTS[0], id: 'other_birth'});`, {error() {}, wa
 assert.equal(nodes.get('start').disabled, false);
 assert.match(nodes.get('data-diagnostics').textContent, /可能冲突/);
 console.log('PASS: invalid event fields, milestone conflicts, both choice paths, valid old saves, malformed-save recovery, preserved storage and visible startup diagnostics.');
+
+storage.clear();
+ctx = context('');
+assert.equal(run('EVENTS.length'), 28);
+assert.equal(run('checkEvents(EVENTS).errors.length'), 0);
+assert.equal(run('checkEvents(EVENTS).warnings.length'), 0);
+// 从真实出生开始模拟不同人生，不伪造标签或前置历史。
+// 每个事件必须至少有一条被引擎真正选中的路径；每年的状态都验证可存档。
+const coverage = run(`(() => {
+  const counts = {}, witnesses = {};
+  for (let seed = 1; seed <= 160; seed++) {
+    let value = seed;
+    const random = () => { value = (Math.imul(value, 1664525) + 1013904223) >>> 0; return value / 4294967296; };
+    const player = createPlayer(), world = createWorld();
+    while (player.alive) {
+      const event = pickEvent(player, random);
+      const saved = {version: 1, player, world, currentEventId: event?.id || null, resolved: false, result: ''};
+      if (!validSave(saved)) throw Error('invalid pending save at ' + player.age);
+      if (event) {
+        const choice = event.choices[Math.floor(random() * event.choices.length)];
+        applyChoice(player, event, choice);
+        counts[event.id] = (counts[event.id] || 0) + 1;
+        witnesses[event.id] ||= player.history.filter(h => h.eventId).map(h => ({age: h.age, id: h.eventId, choice: h.choiceId}));
+        saved.resolved = true; saved.result = choice.resultText;
+        if (!validSave(saved)) throw Error('invalid resolved save ' + event.id);
+      } else player.history.push({age: player.age, year: world.year, eventId: null, eventTags: [], text: '平静的一年。', importance: 0});
+      advanceYear(player, world);
+    }
+    if (!validSave({version: 1, player, world, currentEventId: null, resolved: false, result: ''})) throw Error('invalid end save');
+  }
+  return {counts, witnesses, missing: EVENTS.filter(e => !counts[e.id]).map(e => e.id)};
+})()`);
+assert.equal(coverage.missing.length, 0, `无法触发：${coverage.missing.join(', ')}`);
+for (const [followup, prerequisites] of Object.entries({
+  old_album: ['art_class', 'interest'], boss_message: ['phone_request', 'first_job'],
+  relatives_adult: ['relatives_child', 'major'], spring_home: ['red_envelope', 'first_job'], home: ['score95']
+})) {
+  const path = coverage.witnesses[followup];
+  const end = path[path.length - 1];
+  assert.equal(end.id, followup);
+  for (const prerequisite of prerequisites) assert.ok(path.slice(0, -1).some(h => h.id === prerequisite && h.age < end.age), `${followup} 缺少较早的前置 ${prerequisite}`);
+  assert.equal(run(`eligible(EVENTS.find(e => e.id === '${followup}'), {...createPlayer(), age: ${end.age}, lifeStage: stageFor(${end.age})[1]})`), false);
+}
+// 使用完整事件库再跑一次真实按钮流程，包含选择前后刷新恢复。
+nodes.get('start').onclick();
+let steps = 0;
+while (run('state.player.alive')) {
+  if (nodes.get('choices').children.length) {
+    ctx = context('');
+    nodes.get('choices').children[steps % 2].onclick();
+    ctx = context('');
+  }
+  assert.equal(run('validSave(state)'), true);
+  nodes.get('grow').onclick();
+  assert.ok(++steps <= 80);
+}
+assert.equal(run('state.player.age'), 80);
+console.log('PASS: 28 events, zero data errors/warnings, 160 seeded lives, all events reachable, cross-age chains, save validation and full UI life with reloads.');

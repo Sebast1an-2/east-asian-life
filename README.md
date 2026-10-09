@@ -12,7 +12,8 @@
 - `index.html`：页面结构和脚本加载顺序。
 - `style.css`：颜色、间距、布局。
 - `player.js`：Player、人生阶段和 World 初始数据，以及未来 NPC 结构说明。
-- `events.js`：8 个测试事件，修改剧情先看这里。
+- `events.js`：28 个事件（原有 8 个和新增 20 个），修改剧情先看这里。
+- `EVENT_CATALOG.md`：按阶段整理的事件清单、前置条件和跨年龄事件链。
 - `engine.js`：事件筛选、排序、加权随机、冷却、属性变化和 History 记录。
 - `validation.js`：事件数据检查、必然节点冲突警告和存档格式检查。
 - `app.js`：按钮、页面渲染、localStorage 存档与恢复。
