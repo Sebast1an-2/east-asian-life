@@ -12,6 +12,43 @@ function checkEvents(events, maxEventsPerYear = MAX_EVENTS_PER_YEAR) {
   const error = (path, message) => errors.push(`${path}：${message}`);
   if (!Number.isInteger(maxEventsPerYear) || maxEventsPerYear < 1 || maxEventsPerYear > 3) error("MAX_EVENTS_PER_YEAR", "年度上限必须是 1～3 的整数");
   if (!Array.isArray(events)) return { errors: ["EVENTS 必须是数组"], warnings };
+  const conditionSources = [];
+  function validateConditions(c, path) {
+    if (isRecord(c)) conditionSources.push({c,path});
+    if (!isRecord(c)) error(`${path}`, "必须是对象");
+    else {
+      const allowed = ["minAge", "maxAge", "lifeStages", "tagsAll", "tagsNone", "historyEventIds", "historyChoicesAll", "historyChoicesAny", "historyChoicesNone", "states", "statesNone", "stats", "childAge"];
+      for (const key of Object.keys(c)) if (!allowed.includes(key)) error(`${path}.${key}`, key === "requiredTags" ? "请改用 tagsAll；当前引擎不支持 requiredTags" : "不支持的条件字段，请检查拼写");
+      for (const key of ["minAge", "maxAge"]) if (key in c && !isAge(c[key])) error(`${path}.${key}`, "必须是非负整数年龄");
+      if (isAge(c.minAge) && isAge(c.maxAge) && c.minAge > c.maxAge) error(`${path}`, "minAge 不能大于 maxAge");
+      for (const key of ["lifeStages", "tagsAll", "tagsNone", "historyEventIds"]) if (key in c && !isTextList(c[key])) error(`${path}.${key}`, "必须是文字数组");
+      if (isTextList(c.lifeStages) && c.lifeStages.some(s => !STAGES.some(item => item[1] === s))) error(`${path}.lifeStages`, "包含未知人生阶段");
+      if (isTextList(c.tagsAll) && isTextList(c.tagsNone) && c.tagsAll.some(t => c.tagsNone.includes(t))) error(`${path}`, "同一标签不能同时要求存在和不存在");
+      for (const key of ["historyChoicesAll", "historyChoicesAny", "historyChoicesNone"]) if (key in c) {
+        if (!Array.isArray(c[key]) || !c[key].every(ref => isRecord(ref) && Object.keys(ref).every(k => ["eventId", "choiceId"].includes(k)) && isText(ref.eventId) && isText(ref.choiceId))) error(`${path}.${key}`, "必须是 { eventId, choiceId } 的数组");
+        else if (key === "historyChoicesAny" && !c[key].length) error(`${path}.${key}`, "至少需要一个历史选择，否则事件永远不能触发");
+      }
+      if (Array.isArray(c.historyChoicesAll) && Array.isArray(c.historyChoicesNone) && c.historyChoicesAll.some(a => isRecord(a) && c.historyChoicesNone.some(b => b?.eventId === a.eventId && b?.choiceId === a.choiceId))) error(`${path}`, "同一历史选择不能同时要求和排除");
+      if ("states" in c) stateFormatErrors(c.states, "conditions").forEach(message => error(`${path}.states`, message));
+      if ("statesNone" in c) {
+        stateFormatErrors(c.statesNone, "conditions").forEach(message => error(`${path}.statesNone`, message));
+        if (isRecord(c.statesNone) && !Object.keys(c.statesNone).length) error(`${path}.statesNone`, "不能为空，否则会排除所有玩家");
+      }
+      if ("childAge" in c) {
+        const r=c.childAge;
+        if (!isRecord(r) || !["min","max"].some(k=>k in r) || Object.keys(r).some(k=>!["min","max","allowNoChild"].includes(k)) || ["min","max"].some(k=>k in r && !isAge(r[k])) || ("allowNoChild" in r && typeof r.allowNoChild !== "boolean")) error(`${path}.childAge`, "必须是非负整数min/max范围；allowNoChild如填写必须为布尔值");
+        else if (r.min !== undefined && r.max !== undefined && r.min > r.max) error(`${path}.childAge`, "min不能大于max");
+      }
+      if ("stats" in c) {
+        if (!isRecord(c.stats)) error(`${path}.stats`, "必须是属性范围对象");
+        else for (const [key, range] of Object.entries(c.stats)) {
+          if (![...BOUNDED_STATS, "money"].includes(key)) error(`${path}.stats.${key}`, "未知属性名");
+          if (!isRecord(range) || !Object.keys(range).length || Object.keys(range).some(k => !["min", "max"].includes(k)) || Object.values(range).some(n => !Number.isFinite(n))) error(`${path}.stats.${key}`, "必须包含合法的 min 和/或 max 数值");
+          else if (range.min !== undefined && range.max !== undefined && range.min > range.max) error(`${path}.stats.${key}`, "min 不能大于 max");
+        }
+      }
+    }
+  }
   events.forEach((e, index) => {
     const path = `事件[${index}] (${e?.id || "缺少 id"})`;
     if (!isRecord(e)) { error(path, "必须是对象"); return; }
@@ -26,34 +63,15 @@ function checkEvents(events, maxEventsPerYear = MAX_EVENTS_PER_YEAR) {
     if ("isMajorNode" in e && typeof e.isMajorNode !== "boolean") error(`${path}.isMajorNode`, "必须是 true 或 false，省略表示普通事件");
     if (e.isMajorNode === true && e.repeatable === true && e.cooldown === 0) warnings.push(`${path}：可重复重要节点的 cooldown 为0，仍会被同年去重和年度上限保护，但请确认是否确实需要每年重复。`);
     if (!isAge(e.cooldown)) error(`${path}.cooldown`, "必须是非负整数（年）");
-    const c = e.conditions;
-    if (!isRecord(c)) error(`${path}.conditions`, "必须是对象");
-    else {
-      const allowed = ["minAge", "maxAge", "lifeStages", "tagsAll", "tagsNone", "historyEventIds", "historyChoicesAll", "historyChoicesAny", "historyChoicesNone", "states", "statesNone", "stats"];
-      for (const key of Object.keys(c)) if (!allowed.includes(key)) error(`${path}.conditions.${key}`, key === "requiredTags" ? "请改用 tagsAll；当前引擎不支持 requiredTags" : "不支持的条件字段，请检查拼写");
-      for (const key of ["minAge", "maxAge"]) if (key in c && !isAge(c[key])) error(`${path}.conditions.${key}`, "必须是非负整数年龄");
-      if (isAge(c.minAge) && isAge(c.maxAge) && c.minAge > c.maxAge) error(`${path}.conditions`, "minAge 不能大于 maxAge");
-      for (const key of ["lifeStages", "tagsAll", "tagsNone", "historyEventIds"]) if (key in c && !isTextList(c[key])) error(`${path}.conditions.${key}`, "必须是文字数组");
-      if (isTextList(c.lifeStages) && c.lifeStages.some(s => !STAGES.some(item => item[1] === s))) error(`${path}.conditions.lifeStages`, "包含未知人生阶段");
-      if (isTextList(c.tagsAll) && isTextList(c.tagsNone) && c.tagsAll.some(t => c.tagsNone.includes(t))) error(`${path}.conditions`, "同一标签不能同时要求存在和不存在");
-      for (const key of ["historyChoicesAll", "historyChoicesAny", "historyChoicesNone"]) if (key in c) {
-        if (!Array.isArray(c[key]) || !c[key].every(ref => isRecord(ref) && Object.keys(ref).every(k => ["eventId", "choiceId"].includes(k)) && isText(ref.eventId) && isText(ref.choiceId))) error(`${path}.conditions.${key}`, "必须是 { eventId, choiceId } 的数组");
-        else if (key === "historyChoicesAny" && !c[key].length) error(`${path}.conditions.${key}`, "至少需要一个历史选择，否则事件永远不能触发");
-      }
-      if (Array.isArray(c.historyChoicesAll) && Array.isArray(c.historyChoicesNone) && c.historyChoicesAll.some(a => isRecord(a) && c.historyChoicesNone.some(b => b?.eventId === a.eventId && b?.choiceId === a.choiceId))) error(`${path}.conditions`, "同一历史选择不能同时要求和排除");
-      if ("states" in c) stateFormatErrors(c.states, "conditions").forEach(message => error(`${path}.conditions.states`, message));
-      if ("statesNone" in c) {
-        stateFormatErrors(c.statesNone, "conditions").forEach(message => error(`${path}.conditions.statesNone`, message));
-        if (isRecord(c.statesNone) && !Object.keys(c.statesNone).length) error(`${path}.conditions.statesNone`, "不能为空，否则会排除所有玩家");
-      }
-      if ("stats" in c) {
-        if (!isRecord(c.stats)) error(`${path}.conditions.stats`, "必须是属性范围对象");
-        else for (const [key, range] of Object.entries(c.stats)) {
-          if (![...BOUNDED_STATS, "money"].includes(key)) error(`${path}.conditions.stats.${key}`, "未知属性名");
-          if (!isRecord(range) || !Object.keys(range).length || Object.keys(range).some(k => !["min", "max"].includes(k)) || Object.values(range).some(n => !Number.isFinite(n))) error(`${path}.conditions.stats.${key}`, "必须包含合法的 min 和/或 max 数值");
-          else if (range.min !== undefined && range.max !== undefined && range.min > range.max) error(`${path}.conditions.stats.${key}`, "min 不能大于 max");
-        }
-      }
+    validateConditions(e.conditions, `${path}.conditions`);
+    if ("descriptionDetails" in e) {
+      if (!Array.isArray(e.descriptionDetails)) error(`${path}.descriptionDetails`, "必须是条件文案数组");
+      else e.descriptionDetails.forEach((part,i)=>{
+        const pp=`${path}.descriptionDetails[${i}]`;
+        if (!isRecord(part) || Object.keys(part).some(k=>!["conditions","text"].includes(k))) {error(pp,"每项只接受conditions和text");return;}
+        if (!isText(part.text)) error(pp+".text","必须是非空文字");
+        validateConditions(part.conditions,pp+".conditions");
+      });
     }
     if (!Array.isArray(e.choices) || !e.choices.length) { error(`${path}.choices`, "必须是至少包含一个选择的数组"); return; }
     const choiceIds = new Set();
@@ -70,16 +88,17 @@ function checkEvents(events, maxEventsPerYear = MAX_EVENTS_PER_YEAR) {
       if ("stateChanges" in choice) stateFormatErrors(choice.stateChanges, "changes").forEach(message => error(`${cp}.stateChanges`, message));
     });
   });
-  for (const e of events) if (isTextList(e?.conditions?.historyEventIds)) {
-    for (const id of e.conditions.historyEventIds) if (!ids.has(id)) error(`事件 (${e.id}).conditions.historyEventIds`, `找不到事件 ${id}`);
-  }
-  for (const e of events) for (const key of ["historyChoicesAll", "historyChoicesAny", "historyChoicesNone"]) {
-    if (!Array.isArray(e?.conditions?.[key])) continue;
-    for (const ref of e.conditions[key]) {
-      if (!isRecord(ref)) continue;
-      const referenced = events.find(item => item?.id === ref.eventId);
-      if (!referenced) error(`事件 (${e.id}).conditions.${key}`, `找不到事件 ${ref.eventId}`);
-      else if (!Array.isArray(referenced.choices) || !referenced.choices.some(choice => choice?.id === ref.choiceId)) error(`事件 (${e.id}).conditions.${key}`, `事件 ${ref.eventId} 中找不到选择 ${ref.choiceId}`);
+  // 主条件和文案条件的事件/选择引用都必须真实存在。
+  for (const {c,path} of conditionSources) {
+    if (isTextList(c.historyEventIds)) for (const id of c.historyEventIds) if (!ids.has(id)) error(path+".historyEventIds", "找不到事件 "+id);
+    for (const key of ["historyChoicesAll","historyChoicesAny","historyChoicesNone"]) {
+      if (!Array.isArray(c[key])) continue;
+      for (const ref of c[key]) {
+        if (!isRecord(ref)) continue;
+        const referenced=events.find(item=>item?.id===ref.eventId);
+        if (!referenced) error(path+"."+key,"找不到事件 "+ref.eventId);
+        else if (!Array.isArray(referenced.choices) || !referenced.choices.some(choice=>choice?.id===ref.choiceId)) error(path+"."+key,"事件 "+ref.eventId+" 中找不到选择 "+ref.choiceId);
+      }
     }
   }
   // 人生中的重大事件 ≠ isMajorNode:true：仅用于漏掉会导致状态不合理、缺失关键阶段、
@@ -124,6 +143,7 @@ function validSave(data) {
   for (const h of p.history) {
     if (!isRecord(h) || !isAge(h.age) || h.age > p.age || h.age < previousAge || h.year !== p.birthYear + h.age || !isText(h.text) || !isTextList(h.eventTags) || !isImportance(h.importance)) return false;
     previousAge = h.age;
+    if ("eventDescription" in h && !isText(h.eventDescription)) return false;
     if (h.eventId !== null && (!isText(h.eventId) || !isText(h.eventTitle) || !isText(h.choiceId) || !isText(h.resultText) || !validEffects(h.effects) || !isTextList(h.addTags) || !isTextList(h.removeTags))) return false;
     if (Object.hasOwn(h, "stateChanges")) {
       if (!isRecord(h.stateChanges)) return false;

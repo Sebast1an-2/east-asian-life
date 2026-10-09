@@ -59,7 +59,10 @@ function render() {
     $("description").textContent = `你走过了 ${p.age} 年，做出 ${p.history.filter(item => item.eventId).length} 次选择。${important.length ? "回望那些转折——" + important.join(" ") : "平凡的日子也构成了你的一生。"}`;
     $("result").textContent = "可以翻看人生历史，然后重新投胎。";
   } else if (event) {
-    $("event-title").textContent = event.title; $("description").textContent = event.description;
+    $("event-title").textContent = event.title;
+    // 已选卡片保留当时看到的文案，避免状态变化后把过去的情境重新改写。
+    const last = p.history.at(-1);
+    $("description").textContent = state.resolved && last?.eventId === event.id && last.eventDescription ? last.eventDescription : describeEvent(event, p);
     if (!state.resolved) event.choices.forEach(choice => {
       const button = addText($("choices"), "button", choice.text);
       button.onclick = () => {

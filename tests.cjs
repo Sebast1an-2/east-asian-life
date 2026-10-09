@@ -11,12 +11,12 @@ class Element {
 const nodes = new Map();
 const storage = new Map();
 // 原有回归测试保持仅加载首批 8 个事件，后面单独验证扩充后的完整库。
-function context(beforeApp = 'EVENTS.splice(8);', logger = console, includeYoung = false) {
+function context(beforeApp = 'EVENTS.splice(8);', logger = console, includeYoung = false, includeMiddle = false) {
   const ctx = vm.createContext({ console: logger, document: {
     getElementById(id) { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); },
     createElement() { return new Element(); }
   }, localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) }, confirm: () => true });
-  const files = ['player.js', 'life-state.js', 'events.js', ...(includeYoung ? ['events-young.js'] : []), 'engine.js', 'annual.js', 'validation.js', 'app.js'];
+  const files = ['player.js', 'life-state.js', 'events.js', ...(includeYoung ? ['events-young.js'] : []), ...(includeMiddle ? ['events-middle.js'] : []), 'engine.js', 'annual.js', 'validation.js', 'app.js'];
   for (const file of files) {
     if (file === 'app.js' && beforeApp) vm.runInContext(beforeApp, ctx);
     vm.runInContext(fs.readFileSync(file, 'utf8'), ctx, { filename: file });
@@ -588,3 +588,28 @@ assert.ok(['single', 'dating', 'married'].includes(run('state.player.relationshi
 assert.equal(run('state.player.child.hasChild'), false);
 console.log('PASS: full 50-event UI life, choice reloads, relationship/work state and annual limit.');
 require('./youth-tests.cjs');
+
+// 正式68事件页面：每次选择前后都重载脚本，核对文案、状态与年度进度。
+storage.clear(); ctx=context('',youthLogger,true,true);
+assert.equal(run('EVENTS.length'),68); assert.equal(run('eventReport.errors.length'),0);
+nodes.get('start').onclick();
+let middleUISteps=0;
+while(run('state.player.alive')) {
+  if(nodes.get('choices').children.length) {
+    const descriptionBefore=nodes.get('description').textContent;
+    ctx=context('',youthLogger,true,true);
+    assert.equal(nodes.get('description').textContent,descriptionBefore);
+    nodes.get('choices').children[0].onclick();
+    const saved=run('JSON.stringify(state)');
+    assert.equal(run('state.player.history.at(-1).eventDescription'),descriptionBefore);
+    ctx=context('',youthLogger,true,true);
+    assert.equal(run('JSON.stringify(state)'),saved);
+    assert.equal(nodes.get('description').textContent,descriptionBefore);
+  }
+  assert.equal(run('validSave(state)'),true);
+  nodes.get('grow').onclick(); assert.ok(++middleUISteps<=240);
+}
+assert.equal(run('state.player.age'),80);
+assert.ok(run('state.player.history.some(h=>h.eventId?.startsWith("mid_"))'));
+console.log('PASS: full 68-event UI life, pending/resolved description and choice reloads, current states and annual progress.');
+require('./middle-tests.cjs');
