@@ -17,7 +17,7 @@ function save() {
 function newLife() {
   if (eventReport.errors.length) return;
   const player = createPlayer();
-  state = { version: 1, player, world: createWorld(), currentEventId: pickEvent(player)?.id || null, resolved: false, result: "" };
+  state = { version: SAVE_VERSION, player, world: createWorld(), currentEventId: pickEvent(player)?.id || null, resolved: false, result: "" };
   save(); render();
 }
 function addText(parent, tag, text, className) {
@@ -31,6 +31,10 @@ function render() {
   const p = state.player;
   $("profile").textContent = `${p.name} · ${p.gender} · ${p.age} 岁`;
   $("background").textContent = `${state.world.year} 年 · ${stageFor(p.age)[2]} · ${p.identity}｜${p.familyBackground}`;
+  const workNames = {not_working: "未记录当前工作", employed: "在职", unemployed: "待业", retired: "已退休"};
+  const relationshipNames = {single: "单身", dating: "恋爱中", married: "已婚"};
+  const housingNames = {with_family: "与家人同住", renting: "租住", owns_home: "自有住房"};
+  $("life-states").textContent = `当前状态：${workNames[p.work.status]} · ${relationshipNames[p.relationship.status]} · ${p.child.hasChild ? `孩子 ${childAge(p)} 岁` : "无孩子"} · ${housingNames[p.housing.status]}`;
   $("stats").replaceChildren();
   for (const [key, label] of Object.entries(STAT_LABELS)) {
     const wrapper = addText($("stats"), "div", "");
@@ -59,7 +63,9 @@ function render() {
       const button = addText($("choices"), "button", choice.text);
       button.onclick = () => {
         if (state.resolved || !state.player.alive) return;
-        applyChoice(state.player, event, choice); state.resolved = true; state.result = choice.resultText;
+        try { applyChoice(state.player, event, choice); }
+        catch (error) { $("save-status").textContent = `选择未执行：${error.message}`; console.error(error); return; }
+        state.resolved = true; state.result = choice.resultText;
         save(); render();
       };
     });
@@ -83,8 +89,8 @@ try {
   const raw = localStorage.getItem(SAVE_KEY);
   if (raw && !eventReport.errors.length) {
     const loaded = JSON.parse(raw);
-    if (!validSave(loaded)) throw new Error("invalid save");
-    state = loaded; $("save-status").textContent = "已恢复上次的人生。";
+    state = upgradeSave(loaded);
+    $("save-status").textContent = loaded.version === SAVE_VERSION ? "已恢复上次的人生。" : "已恢复并升级旧存档；新增状态使用安全默认值，下次操作时保存。";
   }
 } catch { state = null; $("save-status").textContent = "存档无法读取。原存档尚未覆盖；点击开始新人生即可重新开始。"; }
 render();

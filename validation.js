@@ -26,13 +26,18 @@ function checkEvents(events) {
     const c = e.conditions;
     if (!isRecord(c)) error(`${path}.conditions`, "必须是对象");
     else {
-      const allowed = ["minAge", "maxAge", "lifeStages", "tagsAll", "tagsNone", "historyEventIds", "stats"];
+      const allowed = ["minAge", "maxAge", "lifeStages", "tagsAll", "tagsNone", "historyEventIds", "historyChoicesAll", "historyChoicesNone", "states", "stats"];
       for (const key of Object.keys(c)) if (!allowed.includes(key)) error(`${path}.conditions.${key}`, key === "requiredTags" ? "请改用 tagsAll；当前引擎不支持 requiredTags" : "不支持的条件字段，请检查拼写");
       for (const key of ["minAge", "maxAge"]) if (key in c && !isAge(c[key])) error(`${path}.conditions.${key}`, "必须是非负整数年龄");
       if (isAge(c.minAge) && isAge(c.maxAge) && c.minAge > c.maxAge) error(`${path}.conditions`, "minAge 不能大于 maxAge");
       for (const key of ["lifeStages", "tagsAll", "tagsNone", "historyEventIds"]) if (key in c && !isTextList(c[key])) error(`${path}.conditions.${key}`, "必须是文字数组");
       if (isTextList(c.lifeStages) && c.lifeStages.some(s => !STAGES.some(item => item[1] === s))) error(`${path}.conditions.lifeStages`, "包含未知人生阶段");
       if (isTextList(c.tagsAll) && isTextList(c.tagsNone) && c.tagsAll.some(t => c.tagsNone.includes(t))) error(`${path}.conditions`, "同一标签不能同时要求存在和不存在");
+      for (const key of ["historyChoicesAll", "historyChoicesNone"]) if (key in c) {
+        if (!Array.isArray(c[key]) || !c[key].every(ref => isRecord(ref) && Object.keys(ref).every(k => ["eventId", "choiceId"].includes(k)) && isText(ref.eventId) && isText(ref.choiceId))) error(`${path}.conditions.${key}`, "必须是 { eventId, choiceId } 的数组");
+      }
+      if (Array.isArray(c.historyChoicesAll) && Array.isArray(c.historyChoicesNone) && c.historyChoicesAll.some(a => isRecord(a) && c.historyChoicesNone.some(b => b?.eventId === a.eventId && b?.choiceId === a.choiceId))) error(`${path}.conditions`, "同一历史选择不能同时要求和排除");
+      if ("states" in c) stateFormatErrors(c.states, "conditions").forEach(message => error(`${path}.conditions.states`, message));
       if ("stats" in c) {
         if (!isRecord(c.stats)) error(`${path}.conditions.stats`, "必须是属性范围对象");
         else for (const [key, range] of Object.entries(c.stats)) {
@@ -54,10 +59,20 @@ function checkEvents(events) {
       for (const key of ["addTags", "removeTags"]) if (!isTextList(choice[key])) error(`${cp}.${key}`, "必须是文字数组（没有标签时写 []）");
       if (!isImportance(choice.importance)) error(`${cp}.importance`, "必须是 0～3 的整数");
       if ("identity" in choice && !isText(choice.identity)) error(`${cp}.identity`, "必须是非空文字");
+      if ("stateChanges" in choice) stateFormatErrors(choice.stateChanges, "changes").forEach(message => error(`${cp}.stateChanges`, message));
     });
   });
   for (const e of events) if (isTextList(e?.conditions?.historyEventIds)) {
     for (const id of e.conditions.historyEventIds) if (!ids.has(id)) error(`事件 (${e.id}).conditions.historyEventIds`, `找不到事件 ${id}`);
+  }
+  for (const e of events) for (const key of ["historyChoicesAll", "historyChoicesNone"]) {
+    if (!Array.isArray(e?.conditions?.[key])) continue;
+    for (const ref of e.conditions[key]) {
+      if (!isRecord(ref)) continue;
+      const referenced = events.find(item => item?.id === ref.eventId);
+      if (!referenced) error(`事件 (${e.id}).conditions.${key}`, `找不到事件 ${ref.eventId}`);
+      else if (!Array.isArray(referenced.choices) || !referenced.choices.some(choice => choice?.id === ref.choiceId)) error(`事件 (${e.id}).conditions.${key}`, `事件 ${ref.eventId} 中找不到选择 ${ref.choiceId}`);
+    }
   }
   // 保守检查年龄重叠：其他条件可能使两个事件互斥，警告供作者核对。
   const milestones = events.filter(e => isRecord(e) && e.category === "milestone" && isRecord(e.conditions));
@@ -70,19 +85,38 @@ function checkEvents(events) {
   return { errors, warnings };
 }
 function validSave(data) {
-  if (!isRecord(data) || data.version !== 1 || !isRecord(data.player) || !isRecord(data.world)) return false;
+  if (!isRecord(data) || ![1, SAVE_VERSION].includes(data.version) || !isRecord(data.player) || !isRecord(data.world)) return false;
   const p = data.player, w = data.world;
   if (!isAge(p.age) || p.age > 80 || !Number.isSafeInteger(p.birthYear) || !Number.isSafeInteger(p.birthYear + p.age)) return false;
   if (!["name", "gender", "identity", "familyBackground"].every(k => isText(p[k]))) return false;
   if (typeof p.alive !== "boolean" || p.lifeStage !== stageFor(p.age)[1]) return false;
   if (!BOUNDED_STATS.every(k => Number.isFinite(p[k]) && p[k] >= 0 && p[k] <= 100) || !Number.isFinite(p.money)) return false;
   if (p.alive !== (p.age < 80 && p.health > 0) || !isTextList(p.tags) || !Array.isArray(p.history)) return false;
+  if (data.version === SAVE_VERSION) {
+    if (!validLifeStates(p)) return false;
+  } else {
+    const legacyStates = createLifeStates();
+    for (const group of Object.keys(legacyStates)) if (Object.hasOwn(p, group)) {
+      if (!isRecord(p[group])) return false;
+      legacyStates[group] = {...legacyStates[group], ...p[group]};
+    }
+    if (!validLifeStates({...p, ...legacyStates})) return false;
+  }
   if (!isText(w.name) || w.year !== p.birthYear + p.age || !Array.isArray(w.npcs)) return false;
   let previousAge = -1;
   for (const h of p.history) {
     if (!isRecord(h) || !isAge(h.age) || h.age > p.age || h.age < previousAge || h.year !== p.birthYear + h.age || !isText(h.text) || !isTextList(h.eventTags) || !isImportance(h.importance)) return false;
     previousAge = h.age;
     if (h.eventId !== null && (!isText(h.eventId) || !isText(h.eventTitle) || !isText(h.choiceId) || !isText(h.resultText) || !validEffects(h.effects) || !isTextList(h.addTags) || !isTextList(h.removeTags))) return false;
+    if (Object.hasOwn(h, "stateChanges")) {
+      if (!isRecord(h.stateChanges)) return false;
+      for (const [group, change] of Object.entries(h.stateChanges)) {
+        if (!Object.hasOwn(LIFE_STATE_FIELDS, group) || !isRecord(change) || Object.keys(change).some(k => !["before", "after"].includes(k))) return false;
+        for (const side of ["before", "after"]) {
+          if (!isRecord(change[side]) || !validLifeStates({...p, ...createLifeStates(), [group]: change[side]}, h.year)) return false;
+        }
+      }
+    }
   }
   if (typeof data.resolved !== "boolean" || typeof data.result !== "string") return false;
   if (data.currentEventId !== null) {
@@ -90,7 +124,7 @@ function validSave(data) {
     if (!event || (!p.alive && !data.resolved)) return false;
     const last = p.history[p.history.length - 1];
     if (data.resolved && (!last || last.age !== p.age || last.eventId !== event.id || !event.choices.some(c => c.id === last.choiceId) || data.result !== last.resultText)) return false;
-    if (!data.resolved && (!eligible(event, p) || data.result !== "")) return false;
+    if (!data.resolved && (!eligible(event, data.version === 1 ? {...p, ...legacyStateDefaults(p)} : p) || data.result !== "")) return false;
   } else if (data.resolved || data.result !== "") return false;
   return true;
 }

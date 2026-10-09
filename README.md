@@ -12,6 +12,8 @@
 - `index.html`：页面结构和脚本加载顺序。
 - `style.css`：颜色、间距、布局。
 - `player.js`：Player、人生阶段和 World 初始数据，以及未来 NPC 结构说明。
+- `life-state.js`：V0.2阶段1的最小人生状态、安全修改与旧存档升级。
+- `TRAJECTORY_GUIDE.md`：新增历史选择条件、状态格式和存档升级说明。
 - `events.js`：28 个事件（原有 8 个和新增 20 个），修改剧情先看这里。
 - `EVENT_CATALOG.md`：按阶段整理的事件清单、前置条件和跨年龄事件链。
 - `engine.js`：事件筛选、排序、加权随机、冷却、属性变化和 History 记录。

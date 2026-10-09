@@ -227,8 +227,8 @@ EVENTS.push(
     priority: 100, weight: 1, repeatable: false, cooldown: 0,
     conditions: { minAge: 23, maxAge: 23 }, description: "两份入职通知摆在屏幕上：一份稳定但路远，一份薪水略高、下班时间写着‘弹性’。父母说都行，又各问了三遍。",
     choices: [
-      { id: "steady", text: "选节奏稳定的工作，接受通勤", resultText: "第一笔收入到账了。晚上大致属于你，早晨有一截属于公交车。", effects: { money: 3000, health: -2, stress: 3, family: 4 }, addTags: ["稳定工作起步"], removeTags: [], historyText: "第一份工作，我选择稳定节奏，接受较长通勤。", importance: 3, identity: "初入职场" },
-      { id: "flexible", text: "选收入更高的岗位，试试弹性", resultText: "收入多了一点，你也开始理解‘弹性’可能向两边拉。", effects: { money: 4500, stress: 8, health: -4, autonomy: 4 }, addTags: ["高压工作起步"], removeTags: [], historyText: "第一份工作，我选择较高收入和不确定的下班时间。", importance: 3, identity: "初入职场" }
+      { id: "steady", text: "选节奏稳定的工作，接受通勤", resultText: "第一笔收入到账了。晚上大致属于你，早晨有一截属于公交车。", effects: { money: 3000, health: -2, stress: 3, family: 4 }, addTags: ["稳定工作起步"], removeTags: [], historyText: "第一份工作，我选择稳定节奏，接受较长通勤。", importance: 3, identity: "初入职场", stateChanges: { work: { status: "employed", careerType: "general", level: 1, workStyle: "stable" } } },
+      { id: "flexible", text: "选收入更高的岗位，试试弹性", resultText: "收入多了一点，你也开始理解‘弹性’可能向两边拉。", effects: { money: 4500, stress: 8, health: -4, autonomy: 4 }, addTags: ["高压工作起步"], removeTags: [], historyText: "第一份工作，我选择较高收入和不确定的下班时间。", importance: 3, identity: "初入职场", stateChanges: { work: { status: "employed", careerType: "general", level: 1, workStyle: "high_pressure" } } }
     ]
   },
   {

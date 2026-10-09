@@ -12,13 +12,13 @@
     <pre id="data-diagnostics" class="card" hidden role="alert" style="white-space: pre-wrap"></pre>
     <section id="title-screen" class="card"><h2>从一声啼哭开始</h2><p>经历一些小事，做出一些选择，看看它们把你带到哪里。</p><button id="start">开始新人生</button></section>
     <div id="game" hidden>
-      <section class="card"><h2 id="profile"></h2><p id="background"></p><div id="stats" class="stats"></div><h3>人生标签</h3><div id="tags"></div></section>
+      <section class="card"><h2 id="profile"></h2><p id="background"></p><p id="life-states"></p><div id="stats" class="stats"></div><h3>人生标签</h3><div id="tags"></div></section>
       <section class="card" aria-live="polite"><small id="event-meta"></small><h2 id="event-title"></h2><p id="description"></p><div id="choices"></div><p id="result" class="result"></p><button id="grow">长大一岁 →</button></section>
       <section class="card"><h2>人生历史</h2><ol id="history"></ol></section>
       <button id="restart" class="secondary">重新投胎</button>
     </div>
     <p id="save-status" role="status"></p><footer>虚构社会中的一段人生 · 数据只保存在当前浏览器</footer>
   </main>
-  <script src="player.js"></script><script src="events.js"></script><script src="engine.js"></script><script src="validation.js"></script><script src="app.js"></script>
+  <script src="player.js"></script><script src="life-state.js"></script><script src="events.js"></script><script src="engine.js"></script><script src="validation.js"></script><script src="app.js"></script>
 </body>
 </html>

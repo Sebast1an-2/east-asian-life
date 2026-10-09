@@ -11,6 +11,10 @@ function eligible(event, player) {
   if (c.tagsAll && !c.tagsAll.every(tag => player.tags.includes(tag))) return false;
   if (c.tagsNone && c.tagsNone.some(tag => player.tags.includes(tag))) return false;
   if (c.historyEventIds && !c.historyEventIds.every(id => player.history.some(item => item.eventId === id))) return false;
+  const chosen = ref => player.history.some(item => item.eventId === ref.eventId && item.choiceId === ref.choiceId);
+  if (c.historyChoicesAll && !c.historyChoicesAll.every(chosen)) return false;
+  if (c.historyChoicesNone && c.historyChoicesNone.some(chosen)) return false;
+  if (c.states && !matchesLifeStates(player, c.states)) return false;
   return Object.entries(c.stats || {}).every(([key, range]) =>
     (range.min === undefined || player[key] >= range.min) &&
     (range.max === undefined || player[key] <= range.max));
@@ -33,6 +37,8 @@ function pickEvent(player, random = Math.random) {
   return pool[pool.length - 1];
 }
 function applyChoice(player, event, choice) {
+  // 修改前先检查，失败时连属性和历史也不改变。
+  const prepared = prepareStateChanges(player, choice.stateChanges);
   const changes = {};
   for (const [key, delta] of Object.entries(choice.effects)) {
     if (![...BOUNDED_STATS, "money"].includes(key)) continue;
@@ -42,10 +48,12 @@ function applyChoice(player, event, choice) {
   }
   player.tags = [...new Set([...player.tags.filter(tag => !choice.removeTags.includes(tag)), ...choice.addTags])];
   if (choice.identity) player.identity = choice.identity;
+  for (const group of Object.keys(prepared.changes)) player[group] = prepared.next[group];
   player.history.push({ age: player.age, year: player.birthYear + player.age,
     eventId: event.id, eventTitle: event.title, eventTags: [...event.eventTags],
     choiceId: choice.id, text: choice.historyText, resultText: choice.resultText,
-    effects: changes, addTags: [...choice.addTags], removeTags: [...choice.removeTags], importance: choice.importance });
+    effects: changes, addTags: [...choice.addTags], removeTags: [...choice.removeTags], importance: choice.importance,
+    ...(Object.keys(prepared.changes).length ? {stateChanges: prepared.changes} : {}) });
   if (player.health <= 0) player.alive = false;
 }
 function advanceYear(player, world) {
