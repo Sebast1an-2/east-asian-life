@@ -1,5 +1,44 @@
 # 东亚小孩的一生 · V0.2 人生轨迹版
 
+## About
+
+《东亚小孩的一生》是一款以虚构东亚社会为背景的网页人生模拟游戏。玩家从出生开始经历人生，在事件中做出选择，逐渐形成自己的职业、关系、兴趣和生活轨迹，直到死亡后回顾《你的一生》。
+
+过去做出的选择，会在多年以后继续影响人生。**没有标准人生**：结婚、生育、买房或高收入不自动等于成功；单身、不婚、不育、租房和普通工作也不自动等于失败。游戏没有人生总分或好坏结局评级。
+
+游戏版本为 V0.2，已经完成并经拥有者人工试玩确认，当前功能冻结。V0.2.1 Project Cleanup 只整理项目文档；V0.3 尚未开始。
+
+## Features
+
+- 从出生到晚年、死亡、人生总结和重新投胎的完整循环。
+- 100 个事件候选，通过年龄、属性、真实历史选择和当前生活状态形成不同轨迹。
+- 工作、关系、一个孩子和居住状态；支持不同婚育、住房及工作选择。
+- 跨年龄回声，中年九组主题及职业晚年回声，让旧选择在新情境中重新出现。
+- 电竞、主播与乐队事件链，可尝试、转向、退出或保留为爱好，与普通工作具有同等叙事价值。
+- 持续月收入、一次性收支和年度资金结算；按年龄与健康进行稳定寿命判定。
+- 基于真实历史的人生总结、本地自动存档及旧档安全升级。
+- 原生 HTML/CSS/JavaScript，无框架和第三方运行依赖，可直接打开页面游玩。
+
+## 项目与部署状态
+
+GitHub 仓库：[Sebast1an-2/east-asian-life](https://github.com/Sebast1an-2/east-asian-life)。V0.2 游戏及交接文档的已提交版本已同步；本次 V0.2.1 文档整理尚未提交或推送。
+
+**公开网页部署尚未完成，没有公开游戏地址。**公开部署后的浏览器验收与真实手机验收也尚未完成。仓库上传不等于游戏已上线，完整状态见 [CURRENT_STATUS.md](CURRENT_STATUS.md)。
+
+## 文档导航
+
+未来 Codex 的接手顺序：[AGENTS.md](AGENTS.md) → [CURRENT_STATUS.md](CURRENT_STATUS.md) → [PROJECT_BIBLE.md](PROJECT_BIBLE.md)。
+
+| 入口 | 用途 |
+|---|---|
+| [README.md](README.md) | 项目介绍、运行、试玩和维护入口 |
+| [AGENTS.md](AGENTS.md) | 协作规则与授权边界 |
+| [CURRENT_STATUS.md](CURRENT_STATUS.md) | 当前版本、仓库、部署、验证状态及下一步 |
+| [PROJECT_BIBLE.md](PROJECT_BIBLE.md) | 长期设计原则、架构及数据语义 |
+| [TAG_AUDIT.md](TAG_AUDIT.md) | 标签用途审计 |
+| [THIS_LIFE_GUIDE.md](THIS_LIFE_GUIDE.md) | V0.2 收尾阶段的资金、总结、迁移和测试细节 |
+| [docs/archive/](docs/archive/README.md) | 六份历史阶段指南及事件清单，保留当时内容，部分规则已过时 |
+
 ## 运行
 
 直接双击 `index.html`，用 Chrome 或 Edge 打开。不需要安装依赖。
@@ -14,8 +53,6 @@
 - `player.js`：Player、人生阶段和 World 初始数据，以及未来 NPC 结构说明。
 - `life-state.js`：V0.2阶段1的最小人生状态、安全修改与旧存档升级。
 - `annual.js`：阶段2的年度进度、同年重要节点和每年最多3件事件。
-- `ANNUAL_GUIDE.md`：年度规则、刷新恢复和存档升级说明。
-- `TRAJECTORY_GUIDE.md`：新增历史选择条件、状态格式和存档升级说明。
 - `events.js`：28 个事件（原有 8 个和新增 20 个），修改剧情先看这里。
 - `events-young.js`：阶段3新增22个青年候选事件。
 - `events-middle.js`：阶段4新增18个中年候选事件。
@@ -25,16 +62,10 @@
 - `economy.js`：持续月收入、基本生活支出和年度防重复结算。
 - `tags.js`：原始标签分类、玩家可见倾向白名单。
 - `summary.js`：根据真实历史生成《你的一生》，与UI分离。
-- `TAG_AUDIT.md`：140个标签的逐项用途审计。
-- `THIS_LIFE_GUIDE.md`：阶段6资金规则、总结规则、旧档升级与真实测试例子。
 - `final-tests.cjs`：资金、总结、20种完整人生及重新投胎测试，由主测试自动调用。
 - `late-tests.cjs`：特殊职业、属性原因、晚年路线、稳定死亡与旧档升级专项测试。
-- `LATE_GUIDE.md`：阶段5事件清单、属性作用、寿命规则和存档升级说明。
-- `MIDDLE_CATALOG.md`：中年清单、9类真实回声、三段人生例子及覆盖结果。
 - `middle-tests.cjs`：中年文案、亲子年龄、不同路线和刷新测试，由主测试自动调用。
-- `YOUNG_CATALOG.md`：青年事件清单、三条事件链、回声与路线覆盖检查。
 - `youth-tests.cjs`：青年路径测试，已由 `node tests.cjs` 自动调用。
-- `EVENT_CATALOG.md`：按阶段整理的事件清单、前置条件和跨年龄事件链。
 - `engine.js`：事件筛选、排序、加权随机、冷却、属性变化和 History 记录。
 - `validation.js`：事件数据检查、必然节点冲突警告和存档格式检查。
 - `app.js`：按钮、页面渲染、localStorage 存档与恢复。
@@ -78,7 +109,7 @@ effects.money只记一次性收支，非零时必须填写cashReason；持续收
 ## 静态部署
 
 整个目录可发布到静态托管平台。Vercel 不需要构建命令或框架，保留根目录 index.html 即可。
-本轮未部署，也没有接入 LLM、账户或服务器。
+当前尚未公开部署，也没有接入 LLM、账户或服务器。本次文档整理不执行部署。
 
 ## 新增事件时的数据检查
 
@@ -144,7 +175,7 @@ childAge条件使用非负整数min/max；`allowNoChild: true`让无孩子玩家
 特殊职业没有开局菜单，要由真实游戏/艺术/自主选择、后续尝试及属性逐渐解锁。
 允许电竞退役转型、创作副业、乐队暂别。普通工作、长期单身、不婚不育仍有晚年内容。
 属性资格或实际权重起作用时才显示最多两条“触发原因”；地址末尾加?debug=1查看公开属性精确条件。
-历史改为没有数字序号的简洁时间线，数据保留。完整事件及寿命说明见LATE_GUIDE.md。
+历史改为没有数字序号的简洁时间线，数据保留。阶段5的事件与寿命记录见归档 [LATE_GUIDE.md](docs/archive/LATE_GUIDE.md)，当前规则以 [PROJECT_BIBLE.md](PROJECT_BIBLE.md) 为准。
 
 ## 试玩阶段6
 
@@ -154,4 +185,4 @@ childAge条件使用非负整数min/max；`allowNoChild: true`让无孩子玩家
 4. 再玩一局不同选择，比较总结。主动不婚、不育、租住和放下兴趣不应被系统写成遗憾。
 5. 重新投胎，确认回到0岁、收入和现金清零，上一世的状态与历史都不继承。
 
-阶段6完成后进入试玩确认；原则上功能冻结，只修Bug。各阶段旧说明保留当时的实现背景，当前规则以本文件和THIS_LIFE_GUIDE.md为准。
+V0.2 已完成并经拥有者人工试玩确认，当前功能冻结，后续只处理明确授权的 Bug。历史阶段说明保留在 [docs/archive/](docs/archive/README.md)；当前阶段以 [CURRENT_STATUS.md](CURRENT_STATUS.md) 为准，规则与收尾细节见 [PROJECT_BIBLE.md](PROJECT_BIBLE.md) 和 [THIS_LIFE_GUIDE.md](THIS_LIFE_GUIDE.md)。

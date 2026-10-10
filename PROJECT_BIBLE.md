@@ -297,7 +297,7 @@ closing / question  结尾与“如果重新来一次呢？”
 
 ### 旧文档如何使用
 
-README 是运行入口，TAG_AUDIT 与 THIS_LIFE_GUIDE 保存收尾细节。其他阶段指南/事件清单是开发阶段记录，可能不反映后续更改：YOUNG_CATALOG 和 LATE_GUIDE 的住房 4000 门槛已被 120000 元替代；早期 EVENT_CATALOG 的抓周/老朋友“暂无后续”已被中年回声接通；旧指南的格式 2/3/4 和“尚无总结”不是当前状态。当前规则以代码及本轮核对结果为准，不把历史说明当新增功能清单。
+README 是运行入口，[TAG_AUDIT](TAG_AUDIT.md) 与 [THIS_LIFE_GUIDE](THIS_LIFE_GUIDE.md) 保存收尾细节。六份历史阶段指南/事件清单已在 V0.2.1 文档整理中移至 [docs/archive/](docs/archive/README.md)，不删除，也不改写其阶段记录。它们可能不反映后续更改：[YOUNG_CATALOG](docs/archive/YOUNG_CATALOG.md) 和 [LATE_GUIDE](docs/archive/LATE_GUIDE.md) 的住房 4000 门槛已被 120000 元替代；早期 [EVENT_CATALOG](docs/archive/EVENT_CATALOG.md) 的抓周/老朋友“暂无后续”已被中年回声接通；旧指南的格式 2/3/4 和“尚无总结”不是当前状态。当前规则以代码及最新 CURRENT_STATUS 为准，不把历史说明当新增功能清单。
 
 ## 13. Future AI Principle：以后如何接 AI
 
@@ -311,11 +311,11 @@ V0.3 暂定主题 **「这一世的我」**。候选方向是 Pixel Avatar、Lif
 
 后续可以讨论更丰富内容、AI 辅助、云存档、账号或桌面版本，都是待确认方向，不是承诺路线图。不因可能做桌面版就现在切换 Unity / Godot。
 
-近期顺序：审核交接文档 → 用无上下文的新 Codex 会话检验交接 → 准备第一次网络部署 → 小规模真实试玩 → 收集反馈 → 确定 V0.3 范围。没有远程仓库或部署配置的现成证据时，不能声称游戏已经上线。
+项目已同步至 [GitHub 仓库](https://github.com/Sebast1an-2/east-asian-life)，同步基线与当前文档整理状态见 [CURRENT_STATUS](CURRENT_STATUS.md)。近期顺序：审核文档整理 → 准备第一次公开网页部署 → 浏览器、手机及小规模真实试玩 → 收集反馈 → 确定 V0.3 范围。上传 GitHub 不等于网页上线。
 
 ## 15. Explicit Non-Goals 与维护边界
 
-V0.2 功能冻结，只处理之后明确授权的 Bug。当前文档任务不修改代码、数值、事件或旧指南，也不提交 Git。
+V0.2 功能冻结，只处理之后明确授权的 Bug。V0.2.1 Project Cleanup 仅整理 Markdown 文档、归档六份历史指南和更新链接；不修改游戏代码、HTML/CSS、事件、数值、存档、测试或代码目录，不自动提交 Git。
 
 不擅自引入框架、庞大依赖、后端、NPC、复杂职业/比赛/经营/疾病/经济模拟、路线分数、账号、云存档或 LLM。不为了高级感重构；不让技术设计侵入普通玩家语言。
 
