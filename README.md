@@ -6,7 +6,7 @@
 
 过去做出的选择，会在多年以后继续影响人生。**没有标准人生**：结婚、生育、买房或高收入不自动等于成功；单身、不婚、不育、租房和普通工作也不自动等于失败。游戏没有人生总分或好坏结局评级。
 
-游戏版本为 V0.2，已经完成并经拥有者人工试玩确认，当前功能冻结。V0.2.1 Project Cleanup 只整理项目文档；V0.3 尚未开始。
+游戏版本为 V0.2，已经完成并经拥有者人工试玩确认，当前功能冻结。V0.2.1 Project Cleanup 仅整理项目文档，已完成并提交；V0.3 尚未开始。
 
 ## Features
 
@@ -21,7 +21,7 @@
 
 ## 项目与部署状态
 
-GitHub 仓库：[Sebast1an-2/east-asian-life](https://github.com/Sebast1an-2/east-asian-life)。V0.2 游戏及交接文档的已提交版本已同步；本次 V0.2.1 文档整理尚未提交或推送。
+GitHub 仓库：[Sebast1an-2/east-asian-life](https://github.com/Sebast1an-2/east-asian-life)。V0.2 游戏与 V0.2.1 文档整理已完成并同步；文档整理 commit 为 `fa139dd`（`docs: organize project documentation`）。
 
 **公开网页部署尚未完成，没有公开游戏地址。**公开部署后的浏览器验收与真实手机验收也尚未完成。仓库上传不等于游戏已上线，完整状态见 [CURRENT_STATUS.md](CURRENT_STATUS.md)。
 

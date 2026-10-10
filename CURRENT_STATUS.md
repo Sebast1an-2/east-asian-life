@@ -1,10 +1,10 @@
-# 当前状态：V0.2 已完成，V0.2.1 文档整理
+# 当前状态：V0.2 已完成，V0.2.1 文档整理已完成并提交
 
 核对日期：2026-10-10。项目：《东亚小孩的一生》，原生 HTML / CSS / JavaScript 网页人生模拟。
 
 V0.2「人生轨迹版」六个阶段已完成，项目拥有者已人工试玩确认。核心闭环为出生 → 选择与因果 → 青年/中年/晚年 → 稳定死亡 →《你的一生》→ 重新投胎。现在不开发 V0.3，不增加功能；之后只处理明确授权的 Bug。
 
-当前工作为 V0.2.1 Project Cleanup，仅整理 Markdown 文档、归档历史阶段资料和更新链接。游戏代码、HTML/CSS、事件数据、存档结构、测试逻辑和代码目录均不改变；本次不自动 commit、移动标签或 push。
+V0.2.1 Project Cleanup 已完成并提交，仅整理 Markdown 文档、归档历史阶段资料和更新链接。游戏代码、HTML/CSS、事件数据、存档结构、测试逻辑和代码目录均未改变。
 
 ## 版本与接手入口
 
@@ -16,7 +16,7 @@ V0.2「人生轨迹版」六个阶段已完成，项目拥有者已人工试玩�
 ## Repository Status
 
 - GitHub repository exists：仓库为 [Sebast1an-2/east-asian-life](https://github.com/Sebast1an-2/east-asian-life)。
-- Local and remote synchronized：最近一次成功 push 已将 `master` 同步到 GitHub。本次本地核对中，`HEAD` 与跟踪引用 `origin/master` 一致，均为 `70444de924a956c5f5a446157539af87edfb2a8e`（`docs: add project memory and handoff guide`）。本次在线复核因连接重置／超时未完成，不能据缓存引用保证远程之后没有变化。当前 V0.2.1 文档整理是尚未提交、尚未同步的工作区变更。
+- Local and remote synchronized：V0.2.1 文档整理已完成、提交并同步到 GitHub；同步 commit 为 `fa139dd4e84650888abe33e9960bfa20d31b407f`（`docs: organize project documentation`）。本次本地核对中，`HEAD` 与跟踪引用 `origin/master` 均指向该 commit。
 - v0.2 tag exists：本地 `v0.2` 指向发布 commit `ecea04cd3a920a8f0763948634372513a263a4b0`；本次不创建或移动标签，不据此假定远程已有同名标签。
 - Current branch tracks origin/master：当前分支为 `master`，上游为 `origin/master`；`origin` 指向上述 GitHub 仓库。
 
@@ -24,7 +24,7 @@ V0.2「人生轨迹版」六个阶段已完成，项目拥有者已人工试玩�
 
 | 项目 | 当前状态 |
 |---|---|
-| GitHub repository completed | 已完成：仓库已建立，V0.2 游戏与交接文档的已提交版本已同步 |
+| GitHub repository completed | 已完成：仓库已建立，V0.2 游戏与 V0.2.1 文档整理已提交并同步 |
 | Public web deployment | 未完成：尚未发布公开可玩的网页地址；上传 GitHub 不等于网页上线 |
 | Browser testing | 未完成：公开部署后的浏览器、刷新及存储验收尚未进行；已有拥有者本地试玩确认不能替代这一项 |
 | Mobile testing | 未完成：真实手机上的排版、操作及存储验收尚未进行 |
@@ -62,9 +62,8 @@ V0.2「人生轨迹版」六个阶段已完成，项目拥有者已人工试玩�
 
 ## 下一步，尚未开始
 
-1. 拥有者审核 V0.2.1 文档整理，并决定何时提交及同步；本次不自动执行。
-2. 准备第一次公开网页部署；GitHub 仓库已完成，但没有公开游戏地址或现成托管配置。
-3. 做浏览器、真实手机和小规模完整人生试玩，检查刷新与存储，并整理反馈。
-4. 定义 V0.3「这一世的我」的范围。**先建立 Visual Bible**；Pixel Avatar、Life Album、视觉/动画/声音/移动体验都是候选，尚未设计完成或实现。
+1. 准备第一次公开网页部署；GitHub 仓库已完成，但没有公开游戏地址或现成托管配置。
+2. 做浏览器、真实手机和小规模完整人生试玩，检查刷新与存储，并整理反馈。
+3. 定义 V0.3「这一世的我」的范围。**先建立 Visual Bible**；Pixel Avatar、Life Album、视觉/动画/声音/移动体验都是候选，尚未设计完成或实现。
 
 未经明确授权，不自动进入下一项、修复上述取舍、开发新功能或创建 Git commit。长期原则、精确数据语义、迁移和模块职责见 PROJECT_BIBLE。
