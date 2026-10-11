@@ -2,12 +2,12 @@
 // descriptionDetails只追加满足条件的文字；具体历史选择与当前状态沿用同一套条件。
 EVENTS.push(
   {
-    id: "mid_parenthood", title: "准备之后，新的日常", category: "followup", eventTags: ["家庭", "选择"],
+    id: "mid_parenthood", title: "再谈一次，新的日常", category: "followup", eventTags: ["家庭", "选择"],
     priority: 26, weight: 1, repeatable: false, cooldown: 0,
     conditions: {minAge: 36, maxAge: 45, states: {relationship: {status: "married"}, child: {hasChild: false}}, tagsAll: ["考虑成为父母"], tagsNone: ["主动不生育"], historyChoicesAll: [{eventId: "young_parenthood_plan", choiceId: "plan"}], historyChoicesNone: [{eventId: "young_parenthood_plan", choiceId: "no_child"}]},
-    description: "以前说的‘先准备条件’，如今有了预算和时间表。你们再次确认想不想成为父母，家里的期待没有替你们填答案。",
+    description: "以前说过‘先准备条件’，如今你们又谈起时间、开销和想要的生活。要不要成为父母，仍需要自己决定，家里的期待没有替你们填答案。",
     choices: [
-      {id: "begin",text: "条件准备好了，迎接新的家庭成员",resultText: "这一年，孩子出生了。喜悦和睡眠不足一起到来，日子开始需要新的分工。",effects: {money: -1500,happiness: 6,stress: 7,family: 4},stateChanges: {child: {hasChild: true}},addTags: ["开始养育"],removeTags: ["考虑成为父母"],historyText: "经过准备和再次确认，这一年我成为父母。",importance: 3,cashReason: "迎接家庭新成员的一次性准备费用"},
+      {id: "begin",text: "再次讨论后，决定迎接新的家庭成员",resultText: "这一年，孩子出生了。喜悦和睡眠不足一起到来，日子开始需要新的分工。",effects: {money: -1500,happiness: 6,stress: 7,family: 4},stateChanges: {child: {hasChild: true}},addTags: ["开始养育"],removeTags: ["考虑成为父母"],historyText: "再次讨论并决定成为父母后，这一年孩子出生了。",importance: 3,cashReason: "迎接家庭新成员的一次性准备费用"},
       {id: "pause",text: "暂时不继续，保留自己的安排",resultText: "你们撤下了这一轮计划。需要向家里解释，也留出了重新安排生活的空间。",effects: {autonomy: 5,stress: -3,family: -2},addTags: ["暂缓育儿"],removeTags: ["考虑成为父母"],historyText: "再次讨论生育准备时，我们决定暂时不继续。",importance: 3},
       {id: "no_child",text: "重新确认，我们选择不生育",resultText: "过去的考虑不是必须兑现的承诺。你们把支持和陪伴安排在另一种生活里。",effects: {autonomy: 6,happiness: 3,family: -3,stress: 2},addTags: ["主动不生育","经营自己的关系网"],removeTags: ["考虑成为父母"],historyText: "重新确认后，我们选择不生育。",importance: 3}
     ]
@@ -16,14 +16,14 @@ EVENTS.push(
     id: "mid_work_pressure", title: "职位后面的日历", category: "random", eventTags: ["工作", "时间"],
     priority: 0, weight: 3, repeatable: true, cooldown: 3,
     conditions: {tagsNone: ["特殊职业在岗"],minAge: 36, maxAge: 59, states: {work: {status: "employed", workStyle: "high_pressure"}}},
-    description: "新责任带着一笔收入，也带着更多会议。主管说经验珍贵，你看着日历，想知道珍贵能不能有下班时间。",
+    description: "主管想和你谈管理责任、报酬与会议安排。你看着日历，想知道经验能不能换来清楚的下班时间。",
     descriptionDetails: [
       {conditions: {tagsAll: ["团队保护离线"], historyChoicesAll: [{eventId: "mid_boundary_echo", choiceId: "wait"}]}, text: "你曾把深夜消息留到白天，这次谈排期时也需要维护那条约定。"},
       {conditions: {tagsAll: ["团队允许临时急件"], historyChoicesAll: [{eventId: "mid_boundary_echo", choiceId: "send"}]}, text: "你发出的临时请求附有补休承诺，这些承诺也占着排期的位置。"}
     ],
     choices: [
-      {id: "lead",text: "继续承担管理责任，谈清资源",resultText: "收入增加了，也多了一些决定权。你需要学会替团队接住压力，家里的时间仍要另找。",effects: {stress: 4,family: -2,autonomy: 2},stateChanges: {work: {level: 2}},addTags: ["中年继续争取"],removeTags: ["中年调整节奏"],historyText: "中年工作中，我继续承担管理责任，并争取资源。",importance: 3,monthlyIncome: 9000},
-      {id: "ease",text: "少拿一些收入，换清楚的工作边界",resultText: "评价未必好看，晚上开始能提前约定。改变节奏也需要承担预算上的后果。",effects: {stress: -6,health: 3,autonomy: 5},stateChanges: {work: {workStyle: "balanced"}},addTags: ["中年调整节奏"],removeTags: ["中年继续争取","工作随时在线","争取晋升"],historyText: "中年时，我从高压工作转向更清楚的边界。",importance: 3}
+      {id: "lead",text: "继续承担管理责任，谈清资源",resultText: "你谈定了月薪9000元的岗位安排，继续承担管理责任。你需要替团队接住压力，家里的时间仍要另找。",effects: {stress: 4,family: -2,autonomy: 2},stateChanges: {work: {level: 2}},addTags: ["中年继续争取"],removeTags: ["中年调整节奏"],historyText: "中年工作中，我谈定月薪9000元的岗位安排，继续承担管理责任。",importance: 3,monthlyIncome: 9000},
+      {id: "ease",text: "调整工作节奏，约定清楚的工作边界",resultText: "同事未必理解这次调整，晚上开始能提前约定。你需要在日常安排里维护商量好的边界。",effects: {stress: -6,health: 3,autonomy: 5},stateChanges: {work: {workStyle: "balanced"}},addTags: ["中年调整节奏"],removeTags: ["中年继续争取","工作随时在线","争取晋升"],historyText: "中年时，我从高压工作转向更清楚的边界。",importance: 3}
     ]
   },
   {
@@ -34,7 +34,7 @@ EVENTS.push(
     descriptionDetails: [{conditions: {tagsAll: ["团队保护离线"], historyChoicesAll: [{eventId: "mid_boundary_echo", choiceId: "wait"}]}, text: "你们把提问时间尽量留在白天，边界需要在每一次具体安排里兑现。"}],
     choices: [
       {id: "expert",text: "继续做好专业工作，保留自己的时间",resultText: "收入增长得慢，经验却有了具体去处。你不必给每一年都换一个更大的头衔。",effects: {study: 3,happiness: 3,stress: 1},addTags: ["专业岗位深耕"],removeTags: [],historyText: "中年工作中，我选择继续深耕专业岗位。",importance: 2,monthlyIncome: 4800},
-      {id: "try_lead",text: "试着接管理责任，再评估节奏",resultText: "收入和会议一起多了。你给这次尝试留了调整的余地。",effects: {stress: 4,family: -2},stateChanges: {work: {workStyle: "high_pressure",level: 2}},addTags: ["中年继续争取"],removeTags: ["中年调整节奏"],historyText: "中年时，我尝试承担更忙的管理岗位。",importance: 3}
+      {id: "try_lead",text: "试着接管理责任，再评估节奏",resultText: "管理事务进入新的排期，会议占用更多时间。你给这次工作安排留了调整的余地。",effects: {stress: 4,family: -2},stateChanges: {work: {workStyle: "high_pressure",level: 2}},addTags: ["中年继续争取"],removeTags: ["中年调整节奏"],historyText: "中年时，我尝试承担更忙的管理岗位。",importance: 3}
     ]
   },
   {

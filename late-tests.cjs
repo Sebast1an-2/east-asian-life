@@ -93,7 +93,7 @@ run(`{
  const side=createPlayer();chosen(side,'interest','art',13);side.autonomy=60;chosen(side,'stream_first','continue',21);side.money=2000;
  chosen(side,'stream_fulltime','parttime',25);expect(side.work.status==='not_working'&&side.tags.includes('内容作为副业'),'副业强制变成职业');
  const band=musicPast();expect(band.work.careerType==='musician','未进入音乐工作');
- chosen(band,'band_changes','end',30);expect(band.work.careerType==='general'&&!band.tags.includes('认真玩过乐队'),'乐队不能退出');
+ chosen(band,'band_changes','end',30);expect(band.work.careerType==='musician'&&band.tags.includes('认真玩过乐队')&&band.tags.includes('乐队暂别'),'结束合作覆盖职业或删除经历');
  chosen(band,'band_return','again',45);age(band,65);expect(eligible(ev('late_band_echo'),band),'解散后失去乐队回声');
  const hobby=musicPast();hobby.history=hobby.history.filter(h=>h.eventId!=='band_direction');hobby.work=createLifeStates().work;hobby.monthlyIncome=0;
  chosen(hobby,'band_direction','side',24);expect(hobby.work.status==='not_working','音乐副业强制就业');
@@ -101,6 +101,35 @@ run(`{
  for(const id of ['late_esports_echo','late_stream_echo','late_band_echo'])expect(!eligible(ev(id),nobody),'伪造职业回忆 '+id);
 }`);
 console.log('PASS: 3 special careers, real early choices, successes/pressures, exits/changes, hobby/side-work, late echoes and ordinary-career guards.');
+// 结束的是这段合作：主职业、收入、身份和过去经历均不受影响。
+run(`{
+ const profiles=[['employed','general'],['employed','esports'],['employed','esports_coach'],['employed','streamer'],['employed','musician'],['unemployed',null],['not_working',null],['retired',null]];
+ for(const [status,career] of profiles){
+  const p=musicPast();
+  p.work=status==='employed'?{status,careerType:career,level:2,workStyle:'high_pressure',startYear:2024}:{...createLifeStates().work,status};
+  p.monthlyIncome=status==='employed'?13750:status==='retired'?1800:0;p.identity='测试原身份';
+  p.tags.push('乐队作为副业');chosen(p,'band_changes','adapt',28);
+  const work=JSON.stringify(p.work),history=JSON.stringify(p.history),tags=[...p.tags],identity=p.identity,income=p.monthlyIncome,money=p.money;
+  chosen(p,'band_changes','end',32);
+  expect(JSON.stringify(p.work)===work&&p.monthlyIncome===income&&p.identity===identity&&p.money===money,'乐队结束污染职业 '+status+'/'+career);
+  expect(JSON.stringify(p.history.slice(0,-1))===history&&tags.every(t=>p.tags.includes(t)),'乐队结束删除过去经历 '+career);
+  expect(p.tags.includes('乐队暂别')&&!p.history.at(-1).incomeChange&&!p.history.at(-1).stateChanges,'乐队结束制造工作/收入变更 '+career);
+  age(p,36);expect(!eligible(ev('band_changes'),p),'冷却结束后又要求结束同一合作');
+  const raw=JSON.stringify(saved(p)),restored=upgradeSave(JSON.parse(raw));expect(validSave(restored)&&JSON.stringify(restored)===raw,'退出后的V5存档改变');
+  chosen(p,'band_return','again',45);expect(p.monthlyIncome===income&&JSON.stringify(p.work)===work,'重拾乐器误成职业');
+  age(p,49);expect(!eligible(ev('band_changes'),p),'重拾乐器自动重开旧合作');
+  age(p,65);expect(eligible(ev('late_band_echo'),p),'退出后失去真实音乐回声');
+ }
+ const p=createPlayer();chosen(p,'art_class','join',3);chosen(p,'interest','art',13);chosen(p,'band_instrument','learn',15);
+ chosen(p,'band_rehearsal','join',20);chosen(p,'band_stage','play',21);p.money=2000;age(p,28);
+ expect(eligible(ev('band_direction'),p),'结束前音乐工作讨论不可达');chosen(p,'band_changes','end');
+ age(p,29);expect(!eligible(ev('band_direction'),p),'结束合作后仍靠过去标签邀请音乐工作');
+ const stale=saved(p);stale.currentEventId='band_direction';const history=JSON.stringify(p.history),annual=JSON.stringify(stale.annual);
+ const restored=upgradeSave(JSON.parse(JSON.stringify(stale)));
+ expect(validSave(restored)&&restored.currentEventId===null&&JSON.stringify(restored.player.history)===history&&JSON.stringify(restored.annual)===annual,'旧乐队卡撤下时丢失历史/年度进度');
+ beginYear(restored,()=>0);expect(restored.currentEventId===null,'旧乐队卡撤下后重抽');
+}`);
+console.log('PASS: band closure preserves 8 employment/career profiles, music history/tags, identity, pay and late echoes; closed cooperation stays closed and stale V5 cards withdraw safely.');
 // Stats实际资格与权重，不靠文案假装。使用同一抽签值验证高压力确实改变选中的事件。
 run(`{
  const p=createPlayer();age(p,40);
@@ -125,6 +154,51 @@ run(`{
  expect(JSON.stringify(p.history.at(-1).triggerReasons)===JSON.stringify(reasons),'选择后解释被新数值改写');
 }`);
 console.log('PASS: stress/health/family/money/study/happiness/autonomy eligibility/weights, real weighted draw and pre-choice explanations.');
+
+// Phase 3：标签细分不能改变同一组事实的Summary取材，也不能丢失晚年阶段。
+run(`{
+ const refined = {late_work:'劳动',late_daily:'日常',late_body:'健康',late_interest:'兴趣',late_friend:'朋友',late_partner:'关系',late_children:'亲子'};
+ const base=createPlayer();chosen(base,'birth',ev('birth').choices[0].id,0);
+ chosen(base,'first_job','steady',23);chosen(base,'young_meet','date',24);chosen(base,'young_values','register',26);
+ chosen(base,'young_married_daily','share',28);chosen(base,'young_parenthood_plan','plan',30);
+ chosen(base,'mid_parenthood','begin',36);chosen(base,'mid_daily','own_time',40);
+ let cases=0;
+ for(const [id,tag] of Object.entries(refined)){
+  const e=ev(id);expect(e.category==='random'&&!e.isMajorNode&&JSON.stringify(e.eventTags)===JSON.stringify(['晚年',tag]),'晚年主题范围错误 '+id);
+  for(const prepared of [false,true])for(const choice of e.choices){
+   const p=JSON.parse(JSON.stringify(base));
+   if(prepared)chosen(p,'late_work','part',61); // 已限定工时：再次part不会制造work变化。
+   const previous=JSON.stringify(p.history);chosen(p,id,choice.id,65);
+   expect(JSON.stringify(p.history.slice(0,-1))===previous,'细分主题回写过去 '+id);
+   expect(p.history.at(-1).eventTags.includes('晚年'),'新History丢失晚年阶段 '+id);
+   if(id==='late_work'&&prepared&&choice.id==='part')expect(!p.history.at(-1).stateChanges,'测试未覆盖工作状态无变化');
+   const old=JSON.parse(JSON.stringify(p));
+   for(const h of old.history)if(Object.hasOwn(refined,h.eventId))h.eventTags=['晚年','生活'];
+   for(let i=0;i<p.history.length;i++)expect(summaryDomain(p.history[i])===summaryDomain(old.history[i]),'标签改变Summary分类 '+id+'/'+choice.id);
+
+   // V5旧标签、已选择结果及尚未选择卡片，均原样恢复，不重新抽取。
+   const selected=saved(old);selected.currentEventId=id;selected.resolved=true;selected.result=choice.resultText;
+   const raw=JSON.stringify(selected),restored=upgradeSave(JSON.parse(raw));
+   expect(SAVE_VERSION===5&&validSave(restored)&&JSON.stringify(restored)===raw,'V5旧标签/结果卡改变 '+id);
+   const atRest=JSON.stringify(restored);recentThemeCounts(restored.player);pickEvent(restored.player,()=>.5);beginYear(restored,()=>.9);
+   expect(JSON.stringify(restored)===atRest,'临时主题写入存档或重抽已选卡 '+id);
+   const pendingPlayer=JSON.parse(JSON.stringify(base));age(pendingPlayer,65);
+   const pending=saved(pendingPlayer);pending.currentEventId=id;
+   const pendingRaw=JSON.stringify(pending),loaded=upgradeSave(JSON.parse(pendingRaw));beginYear(loaded,()=>.999);
+   expect(validSave(loaded)&&JSON.stringify(loaded)===pendingRaw,'V5待选卡被重抽 '+id);
+
+   age(p,90);age(old,90);recordDeath(p,'自然寿命终点');recordDeath(old,'自然寿命终点');
+   const summary=buildLifeSummary(p),oldSummary=buildLifeSummary(old);
+   expect(JSON.stringify(summary)===JSON.stringify(oldSummary),'主题细分改变Summary内容 '+id+'/'+choice.id);
+   for(const [min,max] of [[0,18],[36,59],[60,110]])expect(summary.trajectory.some(h=>h.age>=min&&h.age<=max),'Summary丢失人生阶段 '+min);
+   cases++;
+  }
+ }
+ expect(cases===28,'晚年选择/状态覆盖不足');
+ const p=JSON.parse(JSON.stringify(base));age(p,65);p.history.push({age:64,eventId:'legacy',eventTags:['晚年','生活']});
+ expect(recentThemeCounts(p).size===0,'从旧宽泛标签虚构近期主题');
+}`);
+console.log('PASS: 28 late-choice/state cases preserve exact Summary, childhood/middle/late stages, historical records and V5 pending/resolved saves; old broad tags stay factual.');
 // 自然风险、健康差异、同年只判一次、死亡只记录一次、刷新稳定。
 run(`{
  expect(deathRisk(59,1)===0,'年轻随机死亡');expect(deathRisk(75,80)>deathRisk(65,80),'年龄未提高风险');

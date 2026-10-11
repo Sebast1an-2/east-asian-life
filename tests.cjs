@@ -75,6 +75,76 @@ assert.equal(run('state'), null);
 assert.match(nodes.get('save-status').textContent, /无法读取/);
 console.log('PASS: 8 events, age 0–80, choices, bounds, cooldown, causal history, priority, save/load, restart and corrupt-save recovery.');
 
+// Phase 3：局部候选验证概率与隔离边界，不向正式EVENTS添加事件。
+run(`{
+  const expect = (ok, message) => { if (!ok) throw Error(message); };
+  const p = createPlayer(); p.age = 40; p.lifeStage = stageFor(40)[1];
+  const h = (age, tags, eventId = 'past') => ({age, eventId, eventTags: tags});
+  const candidate = (id, tags, weight = 1) => ({...EVENTS[0], id, category: 'random',
+    priority: 0, weight, eventTags: tags, repeatable: true, cooldown: 0,
+    conditions: {minAge: 18, maxAge: 110}, isMajorNode: false});
+  const a = candidate('theme_work', ['工作'], 8), b = candidate('theme_friend', ['朋友'], 2);
+  p.history = [h(37,['过期']),h(38,['工作','晚年','生活']),h(38,['工作']),
+    h(39,['工作','健康']),h(39,['金钱'],null),h(40,['健康']),h(41,['未来']),
+    {eventId:'missing_age',eventTags:['无年龄']}];
+  const before = JSON.stringify(p), candidatesBefore = JSON.stringify([a,b]);
+  const themes = recentThemeCounts(p);
+  expect(themes.get('工作') === 2 && themes.get('健康') === 2, '主题窗口或同年去重错误');
+  for (const tag of ['过期','未来','金钱','晚年','生活','无年龄']) expect(!themes.has(tag), '误计历史 '+tag);
+  expect(themeDecay(candidate('both',['工作','健康']),themes) === 1/3, '多标签叠加惩罚');
+  p.stress = 80;
+  a.weightModifiers = [{stats:{stress:{min:60}},multiplier:3,reason:'当前压力较高'}];
+  expect(eventWeight(a,p) === 24, '主题分析覆盖属性基准权重');
+  expect(pickEvent(p,()=>.75,[a,b]) === a && pickEvent(p,()=>.85,[a,b]) === b, '软降权未改变实际抽取');
+  let decayed = 0, plain = 0;
+  const noHistory = {...p, history: []};
+  for (let i=0;i<1000;i++) {
+    const random = () => (i+.5)/1000;
+    if (pickEvent(p,random,[a,b]) === a) decayed++;
+    if (pickEvent(noHistory,random,[a,b]) === a) plain++;
+  }
+  expect(decayed === 800 && plain === 923, '主题权重比例与实际概率不一致');
+  p.stress = JSON.parse(before).stress; delete a.weightModifiers;
+  expect(JSON.stringify(p) === before && JSON.stringify([a,b]) === candidatesBefore, '分析写入Player或事件');
+
+  p.history.push(h(40,['工作']));
+  expect(themeDecay(a,recentThemeCounts(p)) === 1/4, '三年主题降权边界错误');
+  p.history = [h(39,['工作'])];
+  expect(selectionPool(p,[a,b]).length === 2, '普通random仍硬筛掉重复主题');
+  expect(pickEvent(p,()=>0,[a,b]) === a && pickEvent(p,()=>.999,[a,b]) === b, '候选失去正概率');
+  const alsoWork = candidate('also_work',['工作','健康']);
+  expect(pickEvent(p,()=>0,[a,alsoWork]) === a && pickEvent(p,()=>.999,[a,alsoWork]) === alsoWork, '全部重复主题时丢失候选');
+  for (const roll of [0,.5,.999]) {
+    let calls = 0;
+    expect(pickEvent(p,()=>{calls++;return roll;},[a]) === a && calls === 1, '唯一候选或随机调用改变');
+  }
+  p.history = [h(38,['工作']),h(39,[],null),h(40,[],null)];
+  expect(recentThemeCounts(p).get('工作') === 1, '平静年份扩展或截断真实窗口');
+  p.age = 41; expect(!recentThemeCounts(p).has('工作'), '过期主题未恢复'); p.age = 40;
+
+  // 前三类保留原优先级及上一事件避重；Major即使被旧避重移出也不能误启用降权。
+  for (const category of ['milestone','followup','conditional']) {
+    p.history = [h(38,['朋友']),h(39,['工作'])];
+    const x = {...a,category,priority:10}, y = {...b,category,priority:10};
+    expect(selectionPool(p,[x,y]).length === 1 && pickEvent(p,()=>0,[x,y]) === y, '受保护类别避重改变 '+category);
+    x.priority = 20; expect(pickEvent(p,()=>.999,[x,y,a]) === x, '类别/priority改变 '+category);
+    p.history = [h(38,['工作']),h(39,['工作']),h(40,['工作','健康'])];
+    const weightedX = {...x,eventTags:['工作','健康']}, weightedY = {...y,priority:20,eventTags:['朋友','健康']};
+    expect(pickEvent(p,()=>.75,[weightedX,weightedY]) === weightedX, '受保护类别误降权 '+category);
+  }
+  p.history = [h(38,['朋友']),h(39,['工作'])];
+  const major = {...a,isMajorNode:true}, friend = {...b,weight:1}, interest = candidate('theme_interest',['兴趣']);
+  const selection = {};
+  expect(selectionPool(p,[major,friend,interest],selection).length === 2 && !selection.softDecay, '含Major的原池误启用降权');
+  expect(pickEvent(p,()=>.4,[major,friend,interest]) === friend && pickEvent(p,()=>.6,[major,friend,interest]) === interest, 'Major池权重改变');
+  expect(pickEvent(p,()=>.999,[major]) === major, '唯一Major丢失');
+  const cooling = {...a,cooldown:3}; p.history = [h(39,['工作'],a.id)];
+  expect(!eligible(cooling,p) && pickEvent(p,()=>0,[cooling]) === null, '降权绕过cooldown');
+  p.age = 42; expect(eligible(cooling,p) && pickEvent(p,()=>.999,[cooling]) === cooling, 'cooldown到期不可达');
+  p.alive = false; expect(pickEvent(p,()=>0,[a,b]) === null, '死后抽取事件');
+}`);
+console.log('PASS: temporary 3-year themes, quiet-year exclusion, positive soft weights (923/1000 -> 800/1000), sole candidates, unchanged categories/Major/cooldowns and no Player writes.');
+
 // 故意构造错误数据：不修改实际的 8 个事件。
 assert.equal(run('checkEvents(EVENTS).errors.length'), 0);
 assert.equal(run('checkEvents(EVENTS).warnings.length'), 0);

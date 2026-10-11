@@ -185,7 +185,7 @@ const fixtures=[
 ];
 const coverage={};
 for(const [name,fields,policy] of fixtures){
-  let longest=0,minDistinct=99,minEchoes=99;
+  let longest=0,minDistinct=99,minEchoes=99,completeTurns=0;
   for(let seed=1;seed<=8;seed++){
     const setup=JSON.stringify(fields);
     const result=run(`(()=>{const f=${setup},p=middlePast({interest:f.interest||'math',old_album:f.old_album||'keep'});
@@ -202,10 +202,20 @@ for(const [name,fields,policy] of fixtures){
     if(fields.tags?.includes('主动不生育'))assert.ok(!result.seen.mid_parenthood);
     if(name==='unmarried_partner'||name==='single')assert.ok(!result.seen.mid_parenthood);
     if(name==='balanced')assert.ok(!result.seen.mid_work_pressure);
-    if(name==='turning')assert.ok(result.seen.mid_work_pressure&&result.seen.mid_work_balance);
+    if(name==='turning'){
+      // 两个节点都是random，不保证每个人都遇见；检查实际变化，并在样本中保留完整路径见证。
+      const turn=result.history.findIndex(h=>h.eventId==='mid_work_pressure'&&h.choiceId==='ease');
+      if(turn>=0){
+        const change=result.history[turn].stateChanges.work;
+        assert.equal(change.before.workStyle,'high_pressure');assert.equal(change.after.workStyle,'balanced');
+      }
+      for(const [index,h] of result.history.entries())if(h.eventId==='mid_work_balance')assert.ok(turn>=0&&index>turn,'专业工作先于真实节奏调整');
+      if(result.seen.mid_work_pressure&&result.seen.mid_work_balance)completeTurns++;
+    }
     if(fields.tags?.includes('主动不生育')||fields.tags?.includes('主动不婚'))assert.ok(!result.history.filter(h=>h.age>=36&&h.age<=59).some(h=>/孤独|遗憾|失败/.test(h.eventDescription+' '+h.resultText)));
   }
   assert.equal(longest,0,name+' 中年内容断层');assert.ok(minDistinct>=8,name+' 中年内容不足');assert.ok(minEchoes>=7,name+' 回声过少');
+  if(name==='turning')assert.ok(completeTurns>0,'样本中没有完整工作转向路径');
   coverage[name]={longest,minDistinct,minEchoes};
   console.log('MIDDLE COVERAGE: '+name+', 8 lives, blank='+longest+', distinct>='+minDistinct+', echoes>='+minEchoes+'.');
 }

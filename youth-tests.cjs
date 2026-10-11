@@ -91,6 +91,21 @@ run(`{
   expect(!eligible(event('young_decision_echo'), echo) && !eligible(event('young_ranking_echo'), echo), '错误具体选择触发回声');
   echo.history.push({eventId:'interest', choiceId:'math'}, {eventId:'ranking', choiceId:'chase'});
   expect(eligible(event('young_decision_echo'), echo) && eligible(event('young_ranking_echo'), echo), '正确具体选择未触发回声');
+
+  // 特殊职业保护来自真实work，不依赖仍然存在的内部标签。
+  for (const career of ['general', 'streamer', 'esports', 'esports_coach', 'musician', 'other_career']) {
+    const q = createPlayer(); setAge(q, 30);
+    q.work = {status:'employed', careerType:career, level:1, workStyle:'balanced', startYear:2023};
+    q.monthlyIncome = 9000; q.tags = [];
+    const before = JSON.stringify(q);
+    expect(eligible(event('young_job_change'), q) === (career === 'general'), '跳槽资格错误 ' + career);
+    expect(JSON.stringify(q) === before, '资格判断修改玩家 ' + career);
+  }
+  for (const status of ['not_working', 'unemployed', 'retired']) {
+    const q = createPlayer(); setAge(q, 30); q.work.status = status;
+    q.monthlyIncome = status === 'retired' ? 1800 : 0;
+    expect(!eligible(event('young_job_change'), q), '非在职状态进入跳槽 ' + status);
+  }
 }`);
 
 // 完整年度模拟，固定随机种子使同样的输入可重复验证。

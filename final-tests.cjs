@@ -52,6 +52,69 @@ function reload(s){const raw=JSON.stringify(s);expect(validSave(s),'无效存档
 `);
 console.log('PASS: monthly income vs cash, employment/unemployment/retirement rates, once-only annual ledger, child costs, atomic invalid-income rejection, buy/sell/rent cash.');
 
+// Phase 1：通过真实事件验证状态调整与收入变化的区别，不按事件id推断工资。
+run(`{
+ function working(){const p=createPlayer();choose(p,'ranking','chase',11);choose(p,'first_job','flexible',23);return p;}
+ for(const [id,cid,n] of [['young_ranking_echo','own_scale',28],['young_burnout','change',28],['young_promotion','decline',29],['mid_work_pressure','ease',40]]){
+  const p=working();if(id==='young_promotion')choose(p,'young_ranking_echo','compete',26);
+  p.monthlyIncome=13750;p.stress=60;
+  const work={...p.work},history=JSON.stringify(p.history);choose(p,id,cid,n);
+  expect(p.work.workStyle==='balanced'&&p.monthlyIncome===13750,'工作方式重置收入 '+id);
+  for(const key of ['status','careerType','level','startYear'])expect(p.work[key]===work[key],'工作方式污染职业 '+id+'/'+key);
+  expect(!p.history.at(-1).incomeChange&&p.history.at(-1).stateChanges.work,'历史伪造收入变化 '+id);
+  expect(JSON.stringify(p.history.slice(0,-1))===history,'工作调整重写旧历史 '+id);reload(saved(p));
+ }
+ const special=working();special.work.careerType='esports_coach';special.monthlyIncome=12345;
+ choose(special,'young_ranking_echo','own_scale',28);expect(special.monthlyIncome===12345&&special.work.careerType==='esports_coach','回声污染教练职业/工资');
+ const stress=working();stress.monthlyIncome=13750;stress.stress=60;choose(stress,'young_burnout','push',28);
+ expect(stress.monthlyIncome===13750&&!stress.history.at(-1).incomeChange&&stress.money===2000,'压力/一次性奖金重置持续收入');
+
+ // 同一个临时选择测试不同语义；不向正式事件池添加事件。
+ const e=ev('young_ranking_echo'),base={...e.choices.find(c=>c.id==='own_scale'),effects:{},addTags:[],removeTags:[]};
+ const p=working();age(p,28);p.monthlyIncome=13750;
+ for(const patch of [{work:{status:'employed',careerType:'general',level:1,workStyle:'high_pressure'}},{work:{workStyle:'balanced'}},{housing:{status:'renting'}},{}]){
+  applyChoice(p,e,{...base,stateChanges:patch});expect(p.monthlyIncome===13750&&!p.history.at(-1).incomeChange,'重复写入或无关状态重置收入');
+ }
+ applyChoice(p,e,{...base,stateChanges:{work:{workStyle:'high_pressure'}},monthlyIncome:7100});
+ expect(p.monthlyIncome===7100&&p.history.at(-1).incomeChange.after===7100,'显式工资没有优先于工作方式');
+ applyChoice(p,e,{...base,monthlyIncome:7300,stateChanges:{}});expect(p.monthlyIncome===7300,'纯显式涨薪失效');
+ applyChoice(p,e,{...base,stateChanges:{work:{careerType:'streamer',workStyle:'flexible'}},monthlyIncome:7200});
+ expect(p.monthlyIncome===7200&&p.work.careerType==='streamer','显式合同没有优先于默认职业收入');
+
+ for(const cid of ['higher_pay','clear_hours']){
+  const q=working();q.work.level=2;q.monthlyIncome=13750;const start=q.work.startYear;choose(q,'young_job_change',cid,30);
+  expect(q.monthlyIncome===(cid==='higher_pay'?6500:4000)&&q.work.level===2&&q.work.startYear===start&&q.work.careerType==='general','新岗位合同收入或职业错误 '+cid);
+  expect(q.history.at(-1).incomeChange.before===13750,'新岗位收入变化未如实记入History');reload(saved(q));
+ }
+ const promoted=working();choose(promoted,'young_ranking_echo','compete',26);choose(promoted,'young_promotion','accept',29);
+ expect(promoted.monthlyIncome===8000&&promoted.history.at(-1).incomeChange.before===6500,'真实晋升不再改变收入');
+ choose(promoted,'mid_work_pressure','lead',40);expect(promoted.monthlyIncome===9000,'管理合同收入失效');
+ choose(promoted,'mid_work_pressure','lead',43);expect(promoted.monthlyIncome===9000&&!promoted.history.at(-1).incomeChange,'相同合同伪造收入变化');
+ choose(promoted,'late_retirement','retire',65);expect(promoted.monthlyIncome===1800&&promoted.work.status==='retired','退休收入失效');reload(saved(promoted));
+ const unemployed=working();choose(unemployed,'young_career_crisis','leave',30);
+ expect(unemployed.monthlyIncome===0&&unemployed.work.status==='unemployed','离职继续领工资');
+ choose(unemployed,'young_job_search','restart',31);expect(unemployed.monthlyIncome===3200&&unemployed.work.startYear===unemployed.birthYear+31,'重新就业工资/时间失效');reload(saved(unemployed));
+
+ // 真正的职业转换仍按现有规则产生工资，兴趣尝试不产生职业工资。
+ const stream=createPlayer();choose(stream,'interest','art',13);stream.autonomy=60;choose(stream,'stream_first','continue',21);
+ expect(stream.monthlyIncome===0&&stream.work.status==='not_working','尝试创作直接成为职业');
+ choose(stream,'first_job','steady',23);stream.money=2000;choose(stream,'stream_fulltime','fulltime',25);
+ expect(stream.work.careerType==='streamer'&&stream.monthlyIncome===5000&&stream.history.at(-1).incomeChange.before===4000,'主播转换收入失效');
+ choose(stream,'stream_midlife','slow',42);expect(stream.monthlyIncome===3000&&stream.work.careerType==='streamer','主播明确减收合同失效');reload(saved(stream));
+ const music=createPlayer();choose(music,'art_class','join',3);choose(music,'interest','art',13);choose(music,'band_instrument','learn',15);
+ choose(music,'band_rehearsal','join',20);choose(music,'band_stage','play',21);choose(music,'first_job','steady',23);music.money=2000;
+ choose(music,'band_direction','career',24);expect(music.work.careerType==='musician'&&music.monthlyIncome===3500,'音乐职业转换收入失效');reload(saved(music));
+
+ const coach=working();coach.work.careerType='esports_coach';coach.tags=[];coach.monthlyIncome=12345;age(coach,30);
+ const stale=saved(coach);stale.currentEventId='young_job_change';const oldPlayer=JSON.stringify(coach),oldAnnual=JSON.stringify(stale.annual);
+ const restored=upgradeSave(JSON.parse(JSON.stringify(stale)));
+ expect(validSave(restored)&&restored.version===5&&restored.currentEventId===null&&JSON.stringify(restored.player)===oldPlayer&&JSON.stringify(restored.annual)===oldAnnual,'旧普通跳槽卡破坏职业/历史/年度进度');
+ beginYear(restored,()=>0);expect(restored.currentEventId===null,'旧普通跳槽卡撤下后重抽');
+ const money=restored.player.money;expect(settleYear(restored.player)&&restored.player.money===money+12345*12-18000,'旧职业工资年度结算错误');
+ const reloaded=reload(restored);expect(!settleYear(reloaded.player),'旧工资重复结算');
+}`);
+console.log('PASS: Phase 1 style/stress/boundary changes preserve pay; actual employment/career/level changes and explicit contracts change pay; History and V5 stale-card/once-only settlements remain compatible.');
+
 // 构造两个临时Major，专门证明同年追加不支付第二份工资；正式池不新增事件。
 run(`{
  const p=createPlayer();choose(p,'first_job','steady',23);age(p,28);

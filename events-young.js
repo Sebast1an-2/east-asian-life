@@ -18,7 +18,7 @@ EVENTS.push(
     description: "主管想让你带一个急项目：钱多一些，晚上的消息也多一些。他说自己当年就是这么过来的，眼底的疲惫不像奖章。",
     choices: [
       {id: "take",text: "接下来，争取下一次机会",resultText: "奖金到账了，日历的空白被填掉。晋升讨论开始出现你的名字。",effects: {money: 5000,stress: 9,health: -4},addTags: ["争取晋升"],removeTags: ["暂缓晋升"],historyText: "高压工作里，我接下急项目，争取晋升机会。",importance: 3,cashReason: "急项目的一次性奖金"},
-      {id: "step_back",text: "换到节奏清晰的任务，少拿一些钱",resultText: "奖金缩水了，下班时间却变得可以约人。你还需要适应不被随时叫到的安静。",effects: {stress: -7,happiness: 4,autonomy: 6},stateChanges: {work: {workStyle: "balanced"}},addTags: ["暂缓晋升","工作边界起步"],removeTags: ["争取晋升","工作随时在线"],historyText: "面对急项目，我选择换到节奏清晰的工作。",importance: 3}
+      {id: "step_back",text: "换到节奏清晰的任务，留出下班时间",resultText: "你没有接下这次急项目，转去节奏清晰的任务。下班时间变得可以约人，你还需要适应不被随时叫到的安静。",effects: {stress: -7,happiness: 4,autonomy: 6},stateChanges: {work: {workStyle: "balanced"}},addTags: ["暂缓晋升","工作边界起步"],removeTags: ["争取晋升","工作随时在线"],historyText: "面对急项目，我选择换到节奏清晰的工作。",importance: 3}
     ]
   },
   {
@@ -28,7 +28,7 @@ EVENTS.push(
     description: "按时下班的晚上，手机没响。你可以去见人、画两笔，也可以接一点额外工作。空出的时间并不会自动知道该去哪里。",
     choices: [
       {id: "keep_time",text: "把时间留给兴趣和身边的人",resultText: "没有额外收入，你却有一晚不需要向工作交代的生活。",effects: {money: -100,happiness: 6,health: 2,stress: -4},addTags: ["给生活留时间"],removeTags: [],historyText: "一个按时下班的晚上，我把时间留给自己的生活。",importance: 2,cashReason: "下班后兴趣活动开销"},
-      {id: "extra",text: "试着接更忙的岗位，多挣一点",resultText: "报酬多了一点，清静也有了新的标价。你决定先试，再看要不要继续。",effects: {stress: 6,health: -2},stateChanges: {work: {workStyle: "high_pressure"}},addTags: ["争取晋升"],removeTags: ["暂缓晋升"],historyText: "我选择接下更忙的岗位，暂时换取更多收入。",importance: 3}
+      {id: "extra",text: "试着承担更多任务，争取后续机会",resultText: "工作占去了更多晚上的时间，你想把这份投入带去谈下一次机会。要不要继续，仍可以再考虑。",effects: {stress: 6,health: -2},stateChanges: {work: {workStyle: "high_pressure"}},addTags: ["争取晋升"],removeTags: ["暂缓晋升"],historyText: "我选择投入更忙的工作节奏，争取后续岗位机会。",importance: 3}
     ]
   },
   {
@@ -49,11 +49,11 @@ EVENTS.push(
   {
     id: "young_job_change", title: "换一条通勤路", category: "conditional", eventTags: ["工作", "转向"],
     priority: 8, weight: 2, repeatable: true, cooldown: 4,
-    conditions: {tagsNone: ["特殊职业在岗"],minAge: 29, maxAge: 35, states: {work: {status: "employed"}}},
+    conditions: {tagsNone: ["特殊职业在岗"],minAge: 29, maxAge: 35, states: {work: {status: "employed", careerType: "general"}}},
     description: "你收到两个方向不同的机会：待遇更高但节奏更紧，或者普通收入加清楚的下班时间。原公司也说愿意再谈谈。",
     choices: [
-      {id: "higher_pay",text: "换到收入更高的岗位",resultText: "你重新做了一遍自我介绍，也重新排了晚上的时间。",effects: {stress: 6,health: -2},stateChanges: {work: {careerType: "general",workStyle: "high_pressure"}},addTags: ["争取晋升"],removeTags: ["暂缓晋升","给生活留时间"],historyText: "我换到收入更高、节奏更紧的岗位。",importance: 3},
-      {id: "clear_hours",text: "选择边界清楚的工作",resultText: "收入少了一点，约好的晚饭不再总被取消。你得把预算重新算一遍。",effects: {stress: -6,autonomy: 6,happiness: 3},stateChanges: {work: {careerType: "general",workStyle: "balanced"}},addTags: ["工作边界起步","暂缓晋升"],removeTags: ["争取晋升","工作随时在线"],historyText: "工作调整时，我选择了边界清楚的岗位。",importance: 3}
+      {id: "higher_pay",text: "选择月薪6500元、节奏更紧的岗位",resultText: "新合同约定月薪6500元。你重新做了一遍自我介绍，也重新排了晚上的时间。",effects: {stress: 6,health: -2},stateChanges: {work: {careerType: "general",workStyle: "high_pressure"}},addTags: ["争取晋升"],removeTags: ["暂缓晋升","给生活留时间"],historyText: "我换到月薪6500元、节奏更紧的岗位。",importance: 3,monthlyIncome: 6500},
+      {id: "clear_hours",text: "选择月薪4000元、边界清楚的工作",resultText: "新合同约定月薪4000元，约好的晚饭不再总被取消。你按新的报酬重新安排预算。",effects: {stress: -6,autonomy: 6,happiness: 3},stateChanges: {work: {careerType: "general",workStyle: "balanced"}},addTags: ["工作边界起步","暂缓晋升"],removeTags: ["争取晋升","工作随时在线"],historyText: "工作调整时，我选择了月薪4000元、边界清楚的岗位。",importance: 3,monthlyIncome: 4000}
     ]
   },
   {
@@ -64,7 +64,7 @@ EVENTS.push(
     description: "闹钟还没响，你已经在脑子里开会了。体检单暂时没写严重的问题，身体却好像一直在提交延期申请。",
     choices: [
       {id: "push",text: "完成这一轮，再争取资源",resultText: "你得到一笔报酬，疲惫没有一起结清。下一轮谈岗位时，你想把这次算进去。",effects: {money: 2000,health: -5,stress: 5},addTags: ["争取晋升"],removeTags: [],historyText: "疲惫时，我决定先完成这一轮工作。",importance: 2,cashReason: "完成本轮任务的一次性奖金"},
-      {id: "change",text: "申请换到更可持续的节奏",resultText: "收入和评价都有不确定，早晨却终于不再像加班的延长线。",effects: {health: 4,stress: -10,autonomy: 5},stateChanges: {work: {workStyle: "balanced"}},addTags: ["工作边界起步","暂缓晋升"],removeTags: ["争取晋升","工作随时在线"],historyText: "倦怠出现后，我选择调整工作节奏。",importance: 3}
+      {id: "change",text: "申请换到更可持续的节奏",resultText: "同事未必理解你的调整，早晨却终于不再像加班的延长线。之后的岗位安排，还需要继续商量。",effects: {health: 4,stress: -10,autonomy: 5},stateChanges: {work: {workStyle: "balanced"}},addTags: ["工作边界起步","暂缓晋升"],removeTags: ["争取晋升","工作随时在线"],historyText: "倦怠出现后，我选择调整工作节奏。",importance: 3}
     ]
   },
   {

@@ -1,33 +1,76 @@
-# 当前状态：V0.2 已完成，V0.2.1 文档整理已完成并提交
+# 当前状态：V0.2.3 Life Realism Update (Release Candidate)
 
-核对日期：2026-10-10。项目：《东亚小孩的一生》，原生 HTML / CSS / JavaScript 网页人生模拟。
+核对日期：2026-10-11。项目：《东亚小孩的一生》（East Asian Life Simulator），原生 HTML / CSS / JavaScript 网页人生模拟。
 
-V0.2「人生轨迹版」六个阶段已完成，项目拥有者已人工试玩确认。核心闭环为出生 → 选择与因果 → 青年/中年/晚年 → 稳定死亡 →《你的一生》→ 重新投胎。现在不开发 V0.3，不增加功能；之后只处理明确授权的 Bug。
+V0.2.3 Life Realism Update 已完成代码开发、自动测试、Final Integration Audit、Narrative Consistency Fix 和人工浏览器试玩，当前状态仍为 **Release Candidate（RC）**。**Human Playtest: Passed；Release Status: Approved**。本版修改尚未 commit / push，正式发布尚未执行，不能写成已公开发布。
 
-V0.2.1 Project Cleanup 已完成并提交，仅整理 Markdown 文档、归档历史阶段资料和更新链接。游戏代码、HTML/CSS、事件数据、存档结构、测试逻辑和代码目录均未改变。
+本版目标是让已有的人生更可信：修正职业连续性、经济叙事和事件重复感，不增加事件数量、职业数量或经济玩法。当前只进行已授权的发布准备，不开发新阶段。
+
+## 历史记录
+
+V0.2「人生轨迹版」六个阶段已完成，项目拥有者已人工试玩确认。核心闭环为出生 → 选择与因果 → 青年/中年/晚年 → 稳定死亡 →《你的一生》→ 重新投胎。该试玩确认属于 V0.2，不替代当前 V0.2.3 RC 验收。
+
+V0.2.1 Project Cleanup 已完成并提交，仅整理 Markdown 文档、归档历史阶段资料和更新链接；该次整理未改变游戏代码、HTML/CSS、事件数据、存档结构、测试逻辑或代码目录。历史同步 commit 为 `fa139dd4e84650888abe33e9960bfa20d31b407f`（`docs: organize project documentation`），不代表 V0.2.3 已提交。
 
 ## 版本与接手入口
 
-- 发布 commit：`ecea04cd3a920a8f0763948634372513a263a4b0`，message：`release: v0.2 complete life simulation`。
+- 历史 V0.2 发布 commit：`ecea04cd3a920a8f0763948634372513a263a4b0`，message：`release: v0.2 complete life simulation`。V0.2.3 尚无发布 commit。
 - 本地标签 `v0.2` 指向该 commit；存档格式 `SAVE_VERSION = 5`，localStorage 键沿用 `east-asian-life-v01`。
 - 先读 [AGENTS.md](AGENTS.md)，再读本文和 [PROJECT_BIBLE.md](PROJECT_BIBLE.md)。README 可查运行方法；阶段指南主要是历史记录。
 - 根目录保留 [README.md](README.md)、[AGENTS.md](AGENTS.md)、本文和 [PROJECT_BIBLE.md](PROJECT_BIBLE.md)，作为当前项目入口。六份历史阶段文档已移至 [docs/archive/](docs/archive/README.md)，它们是历史开发记录，不是当前规则清单。
 
+## V0.2.3 已完成模块
+
+### Career Consistency
+
+- 修正职业状态一致性：结束乐队合作不覆盖主职业、身份、收入或工作开始年份，保留过去音乐经历。
+- 普通跳槽事件只允许当前 `work.status === employed` 且 `careerType === general` 的玩家触发，不依赖内部标签保护职业。
+- 工作方式、压力或工作边界调整不错误重置收入；实际就业、职业或岗位责任变化仍可重算收入，显式 `monthlyIncome` 优先。
+
+### Economy Consistency
+
+- 修正转型、家庭与工作事件中的经济叙事，使收入与准备程度描述符合真实条件和实际效果。
+- 保留合理的职业转换、明确合同和晋升收入描述，不将工作节奏调整写成必然加薪或减薪。
+- 保持原有经济模型、生活成本公式和年度结算流程，保持 `SAVE_VERSION = 5`，不增加经济字段。
+
+### Event Diversity
+
+- Recent Theme Memory：从已有 History 临时推导当前年及前两年的真实事件主题，忽略 `eventId = null` 的平静年份，不写入 Player 或 Save。
+- Theme Soft Decay：只对普通 random 候选软降权，保留正概率和唯一候选；Major、milestone、followup、conditional 的原机制及 cooldown 保持不变。
+- Late Life Theme Refinement：局部细分晚年工作、日常、健康、兴趣、朋友、关系、亲子主题，保留“晚年”阶段标签；Summary 回归通过。
+
+### Narrative Consistency Fix
+
+- 修正 `stats_stress/rest` 的结果与历史文本：描述休息产生消费成本，不再暗示工资下降。
+- 修正 `stream_online/schedule、chase` 的结果与历史文本：描述直播安排、投入和生活节奏变化，不保证收入增加或减少。
+- Final Fix 仅修改 6 个文本字段，数值、条件、状态、标签和 event / choice id 均未改变；旧 History 不追溯改写。
+
+## 架构与数据兼容状态
+
+- 保持原生 HTML / CSS / JavaScript、普通脚本顺序加载；没有更换框架或增加依赖。
+- 存档格式仍为 `SAVE_VERSION = 5`；Player、History、State、Tags 结构保持不变，无新增长期存档字段。
+- History 是人生事实来源，State 表达当前状态，Tags 保留持续倾向与兼容所需经历信息；不删除过去的人生经历。
+- 事件库仍为 100 个候选，event / choice id、Major 配置和 cooldown 保持不变；年度流程与 Summary 实现未修改。
+- 无 AI 系统、NPC 系统或新增复杂职业树。
+
 ## Repository Status
 
 - GitHub repository exists：仓库为 [Sebast1an-2/east-asian-life](https://github.com/Sebast1an-2/east-asian-life)。
-- Local and remote synchronized：V0.2.1 文档整理已完成、提交并同步到 GitHub；同步 commit 为 `fa139dd4e84650888abe33e9960bfa20d31b407f`（`docs: organize project documentation`）。本次本地核对中，`HEAD` 与跟踪引用 `origin/master` 均指向该 commit。
+- V0.2.3 pending changes：实现与测试共 11 个已跟踪修改文件，尚未 commit / push。实现与事件文件为 `economy.js`、`engine.js`、`events-young.js`、`events-middle.js`、`events-special.js`、`events-elderly.js`；测试文件为 `tests.cjs`、`youth-tests.cjs`、`middle-tests.cjs`、`late-tests.cjs`、`final-tests.cjs`。
+- Documentation sync：本文是额外 1 个已跟踪文档修改，连同上述 11 个文件，当前合计 12 个已跟踪修改文件。此前授权创建的 `ROADMAP.md`、`ULTIMATE_VISION.md` 仍未跟踪，本次保持原样，不计入上述 12 个文件。
+- Committed baseline only：本地 `HEAD` 与跟踪引用 `origin/master` 均为 `f5958cd`（`docs: update project status`）。这只是已有提交基线，不是 V0.2.3 发布 commit；本次未联网核实远程状态，也不据此声称候选改动已同步。
 - v0.2 tag exists：本地 `v0.2` 指向发布 commit `ecea04cd3a920a8f0763948634372513a263a4b0`；本次不创建或移动标签，不据此假定远程已有同名标签。
 - Current branch tracks origin/master：当前分支为 `master`，上游为 `origin/master`；`origin` 指向上述 GitHub 仓库。
 
-## Deployment Status
+## Release Pending / Deployment Status
 
 | 项目 | 当前状态 |
 |---|---|
-| GitHub repository completed | 已完成：仓库已建立，V0.2 游戏与 V0.2.1 文档整理已提交并同步 |
-| Public web deployment | 未完成：尚未发布公开可玩的网页地址；上传 GitHub 不等于网页上线 |
-| Browser testing | 未完成：公开部署后的浏览器、刷新及存储验收尚未进行；已有拥有者本地试玩确认不能替代这一项 |
-| Mobile testing | 未完成：真实手机上的排版、操作及存储验收尚未进行 |
+| V0.2.3 Public Release | Pending：Release Status: Approved（验收批准）；当前仍为 Release Candidate，正式发布待 commit、push 和 release 执行 |
+| GitHub repository | 仓库已建立，V0.2 游戏与 V0.2.1 文档整理已有提交和同步记录；V0.2.3 候选修改尚未提交或推送 |
+| Public web deployment | 2026-10-10 的旧记录为尚无公开游戏地址；本次未核实线上部署，不将 RC 标记为已上线。上传 GitHub 不等于网页上线 |
+| Browser testing | Human Playtest: Passed；开发者已完成 V0.2.3 人工浏览器试玩，核心人生循环体验通过验证，未发现阻塞性问题 |
+| Mobile testing | 当前候选版本在真实手机上的操作、显示与存储验收仍待确认 |
 
 ## 已经能做什么
 
@@ -43,11 +86,25 @@ V0.2.1 Project Cleanup 已完成并提交，仅整理 Markdown 文档、归档�
 
 ## 当前检查与实际限制
 
-最近完整逻辑测试记录：2026-10-09 运行 `node tests.cjs`，退出码 0，原始回归及青年/中年/晚年/收尾四组专项全部通过；收尾专项包含 20 种路线、160 次从出生到死亡的样本。独立加载完整事件库后，`checkEvents(EVENTS)`：100 个候选、0 errors、0 warnings。自动测试采用 Node VM 和简易浏览器对象，不能替代手机、真实浏览器和线上验收；人工试玩结论来自拥有者。本次文档整理只检查事实、链接、归档内容和 Git 变更范围，不重新运行完整逻辑测试。
+最近验证记录：2026-10-11，Final Fix 完整自动测试通过；RC Review 核对候选文件与受测快照一致，并再次通过事件校验和 diff 检查。
+
+| 检查 | 结果与覆盖范围 |
+|---|---|
+| `node tests.cjs` | 通过，退出码 0；包含原始回归及下面四个专项 |
+| `checkEvents(EVENTS)` | 100 events，0 errors，0 warnings |
+| [youth-tests.cjs](youth-tests.cjs) | 通过：青年路线、职业资格、状态与历史条件 |
+| [middle-tests.cjs](middle-tests.cjs) | 通过：中年路线、回声、实际状态转向与可达性 |
+| [late-tests.cjs](late-tests.cjs) | 通过：200 full-life、360 late-life states；包括晚年可达性、Summary 和存档兼容回归 |
+| [final-tests.cjs](final-tests.cjs) | 通过：20 route coverage、194 full-life samples；包括职业收入、年度结算去重与旧档兼容 |
+| Final Fix History 一致性检查 | 8 个针对性场景通过：休息消费，以及直播收入增加、减少、不变；已有历史保持原样 |
+
+这些数字分别属于不同专项，不合并声称为去重后的总样本数。自动测试采用 Node VM、简易 DOM / localStorage 模拟，只说明所测逻辑和样本通过，不能保证所有人生组合，也不能替代真实浏览器、手机和线上验收。**Human Playtest: Passed**：根据开发者反馈“试玩感受基本不错”，当前 RC 已完成人工浏览器试玩，核心人生循环体验通过验证，未发现阻塞性问题。这表示核心体验目标达到，不证明所有人生组合均完美，也不代表移动端或线上环境均已验收。本次状态文档同步只核对事实、链接和 Git 范围，没有重新运行游戏测试。
+
+历史测试记录保留：2026-10-09 的 V0.2 完整测试退出码为 0，四个专项通过，当时收尾覆盖 20 种路线、160 次完整人生，事件校验为 100 个候选、0 errors、0 warnings；这是旧版记录，不替代当前 RC 的结果。
 
 已完成依据仓库文档与代码进行的接手阅读和只读结构审计。根目录文档用于定位当前项目、设计原则、架构、维护边界和下一步；归档资料用于了解过去阶段，不能覆盖当前实现。
 
-检查中尚未发现阻碍 V0.2 核心人生闭环的缺失。下面是已知取舍和维护债务，不是本轮需要顺手修复的 Bug：
+V0.2.3 已完成 Final Integration Audit 与 Final Fix，RC Review 未发现新的代码级发布阻塞；人工浏览器试玩已通过，Final Release Review 结论为 Release Status: Approved，正式发布仍待 commit、push 和 release 执行。下面是保留的已知取舍和维护债务，不是本轮需要顺手修复的 Bug：
 
 | 项目 | 实际情况与后续注意事项 |
 |---|---|
@@ -60,10 +117,10 @@ V0.2.1 Project Cleanup 已完成并提交，仅整理 Markdown 文档、归档�
 | 测试边界 | 样本路线可达性不保证所有组合；真实浏览器、移动端、部署后存储仍需验收 |
 | 本地存档 | 一浏览器来源一份存档，无导出/同步。上线地址不会自动读取本地文件地址的旧档 |
 
-## 下一步，尚未开始
+## 发布前待办，尚未完成
 
-1. 准备第一次公开网页部署；GitHub 仓库已完成，但没有公开游戏地址或现成托管配置。
-2. 做浏览器、真实手机和小规模完整人生试玩，检查刷新与存储，并整理反馈。
-3. 定义 V0.3「这一世的我」的范围。**先建立 Visual Bible**；Pixel Avatar、Life Album、视觉/动画/声音/移动体验都是候选，尚未设计完成或实现。
+1. 由项目拥有者检查本次状态同步；V0.2.3 RC 人工浏览器试玩已通过，真实手机与公开部署后的刷新、存储验收分别记录，不由本次试玩或自动测试代替。
+2. 获得明确授权后 commit / push 已审核的候选修改，区分实现、测试、状态同步与此前长期文档的提交范围。
+3. 在 commit、push 和 release 执行完成后，再更新正式 Release 状态与实际发布记录；人工浏览器试玩已通过，公开网页部署状态仅按真实结果记录。
 
 未经明确授权，不自动进入下一项、修复上述取舍、开发新功能或创建 Git commit。长期原则、精确数据语义、迁移和模块职责见 PROJECT_BIBLE。

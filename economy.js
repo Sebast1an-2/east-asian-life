@@ -15,7 +15,9 @@ function createEconomy(age = 0) { return {lastSettledAge: age - 1, lastSettlemen
 function validMonthlyIncome(value) { return Number.isSafeInteger(value) && value >= 0 && value <= 1000000; }
 function prepareIncome(player, next, choice) {
   let income = player.monthlyIncome;
-  if (choice.stateChanges?.work) income = defaultMonthlyIncome(next.work);
+  // 只有就业、主职业或岗位责任实际变化才采用默认收入；节奏调整与重复写入不改工资。
+  const incomeBasisChanged = ["status", "careerType", "level"].some(key => player.work[key] !== next.work[key]);
+  if (incomeBasisChanged) income = defaultMonthlyIncome(next.work);
   if (Object.hasOwn(choice, "monthlyIncome")) income = choice.monthlyIncome;
   if (!validMonthlyIncome(income) || (!["employed", "retired"].includes(next.work.status) && income !== 0)) throw new Error("持续收入与工作状态不一致");
   return income;

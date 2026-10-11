@@ -38,6 +38,24 @@ function eventWeight(event, player) {
   return (event.weightModifiers || []).filter(part => matchesConditions({stats: part.stats}, player))
     .reduce((weight, part) => weight * part.multiplier, event.weight);
 }
+// 只读真实历史的当前年和前两年；同年多个节点不重复累计主题。
+// 这是一次抽取的临时分析，不补写旧历史，也不保存到Player。
+function recentThemeCounts(player) {
+  const years = new Map();
+  for (const h of player.history) {
+    if (!h.eventId || h.age < player.age - 2 || h.age > player.age || !Number.isSafeInteger(h.age)) continue;
+    for (const tag of h.eventTags || []) {
+      if (tag === "晚年" || tag === "生活") continue;
+      if (!years.has(tag)) years.set(tag, new Set());
+      years.get(tag).add(h.age);
+    }
+  }
+  return new Map([...years].map(([tag, ages]) => [tag, ages.size]));
+}
+function themeDecay(event, recentThemes) {
+  const count = Math.max(0, ...event.eventTags.map(tag => recentThemes.get(tag) || 0));
+  return 1 / (1 + count); // 多标签取最高重复度，不叠加惩罚；始终保留正权重。
+}
 function triggerReasons(event, player, candidates = EVENTS) {
   if (!eligible(event, player)) return [];
   const reasons = [];
@@ -50,7 +68,8 @@ function triggerReasons(event, player, candidates = EVENTS) {
   if (pool.length > 1 && pool.includes(event)) for (const part of event.weightModifiers || []) if (part.reason && !Object.hasOwn(part.stats, "autonomy") && matchesConditions({stats: part.stats}, player)) reasons.push({text: part.reason, detail: detail(part.stats) + `；抽取权重 ×${part.multiplier}`});
   return reasons.slice(0, 2);
 }
-function selectionPool(player, candidates = EVENTS) {
+function selectionPool(player, candidates = EVENTS, selection = {}) {
+  selection.softDecay = false;
   let pool = candidates.filter(event => eligible(event, player));
   if (!pool.length) return [];
   const category = Math.max(...pool.map(event => CATEGORY_ORDER[event.category]));
@@ -60,16 +79,23 @@ function selectionPool(player, candidates = EVENTS) {
     const priority = Math.max(...pool.map(event => event.priority));
     pool = pool.filter(event => event.priority === priority);
   }
+  // 只有整个最高类别池都是普通random才替换旧避重；包含Major的池保持原路径。
+  selection.softDecay = pool.every(event => event.category === "random" && event.isMajorNode !== true);
+  if (selection.softDecay) return pool;
   const last = [...player.history].reverse().find(item => item.eventId);
   const varied = pool.filter(event => !event.eventTags.some(tag => (last?.eventTags || []).includes(tag)));
   if (varied.length) pool = varied;
   return pool;
 }
 function pickEvent(player, random = Math.random, candidates = EVENTS) {
-  const pool = selectionPool(player, candidates);
+  const selection = {};
+  const pool = selectionPool(player, candidates, selection);
   if (!pool.length) return null;
-  let roll = random() * pool.reduce((sum, event) => sum + eventWeight(event, player), 0);
-  for (const event of pool) { roll -= eventWeight(event, player); if (roll < 0) return event; }
+  // 唯一候选不降权；权重只计算一次，同一次抽取共用同一份临时主题分析。
+  const themes = selection.softDecay && pool.length > 1 ? recentThemeCounts(player) : new Map();
+  const weights = pool.map(event => eventWeight(event, player) * themeDecay(event, themes));
+  let roll = random() * weights.reduce((sum, weight) => sum + weight, 0);
+  for (let i = 0; i < pool.length; i++) { roll -= weights[i]; if (roll < 0) return pool[i]; }
   return pool[pool.length - 1];
 }
 function applyChoice(player, event, choice) {

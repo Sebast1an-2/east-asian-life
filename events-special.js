@@ -610,12 +610,12 @@ EVENTS.push(
       }
     }
   },
-  "description": "几次内容有了稳定回应，收入还没有。你算过一段缓冲预算，决定要不要把更多时间交给镜头。",
+  "description": "内容开始有人回应，你想试试能不能把它当作一份工作。手头的钱能用于起步，接下来的日常开销仍需要安排。",
   "choices": [
     {
       "id": "fulltime",
       "text": "用有限预算试一段全职创作",
-      "resultText": "你给尝试定了期限。收入有高有低，时间自由了，也开始需要自己管理停止工作的时刻。",
+      "resultText": "你用一部分现金启动全职创作，开始靠内容工作谋生。时间交给了镜头，休息和停止工作的时刻也需要自己安排。",
       "effects": {
         "money": -800,
         "autonomy": 5,
@@ -626,7 +626,7 @@ EVENTS.push(
         "主播职业经历"
       ],
       "removeTags": [],
-      "historyText": "你给尝试定了期限。收入有高有低，时间自由了，也开始需要自己管理停止工作的时刻。",
+      "historyText": "你用一部分现金启动全职创作，开始靠内容工作谋生。时间交给了镜头，休息和停止工作的时刻也需要自己安排。",
       "importance": 3,
       "stateChanges": {
         "work": {
@@ -641,8 +641,8 @@ EVENTS.push(
     },
     {
       "id": "parttime",
-      "text": "继续做副业，保留另一份生活",
-      "resultText": "更新慢一点，生活却有另一根支撑。创作不用一次变成全部收入。",
+      "text": "保持业余创作，把时间留给其他生活安排",
+      "resultText": "这次内容带来一笔小额分成。你保留有限的更新，把创作放在其他生活安排之间。",
       "effects": {
         "money": 150,
         "happiness": 3
@@ -651,7 +651,7 @@ EVENTS.push(
         "内容作为副业"
       ],
       "removeTags": [],
-      "historyText": "更新慢一点，生活却有另一根支撑。创作不用一次变成全部收入。",
+      "historyText": "你收到这次内容的小额分成，继续业余创作，保留其他生活安排。",
       "importance": 2,
       "cashReason": "本次内容的一次性分成"
     }
@@ -745,7 +745,7 @@ EVENTS.push(
     {
       "id": "schedule",
       "text": "缩短在线时间，公开更新节奏",
-      "resultText": "收入少了一点，你有了不需要对着镜头解释的晚上。",
+      "resultText": "你缩短了在线时间，公开了新的更新安排，也给镜头之外的生活留出了一段时间。",
       "effects": {
         "health": 3,
         "stress": -7,
@@ -755,14 +755,14 @@ EVENTS.push(
         "创作有下线时间"
       ],
       "removeTags": [],
-      "historyText": "收入少了一点，你有了不需要对着镜头解释的晚上。",
+      "historyText": "你缩短了在线时间，公开了新的更新安排，也给镜头之外的生活留出了一段时间。",
       "importance": 2,
       "monthlyIncome": 3500
     },
     {
       "id": "chase",
       "text": "增加更新，先撑过这次波动",
-      "resultText": "流量和报酬回暖，你的睡眠却没有跟着刷新。你仍能在下次重新谈节奏。",
+      "resultText": "你增加了更新，把更多时间投入内容。睡眠和休息被挤占，你仍能在下次重新谈节奏。",
       "effects": {
         "stress": 7,
         "health": -4
@@ -771,7 +771,7 @@ EVENTS.push(
         "创作持续在线"
       ],
       "removeTags": [],
-      "historyText": "流量和报酬回暖，你的睡眠却没有跟着刷新。你仍能在下次重新谈节奏。",
+      "historyText": "你增加了更新，把更多时间投入内容。睡眠和休息被挤占，你仍能在下次重新谈节奏。",
       "importance": 2,
       "monthlyIncome": 6000
     }
@@ -1084,6 +1084,9 @@ EVENTS.push(
     "tagsAll": [
       "认真玩过乐队"
     ],
+    "tagsNone": [
+      "乐队暂别"
+    ],
     "stats": {
       "money": {
         "min": 600
@@ -1121,8 +1124,8 @@ EVENTS.push(
     },
     {
       "id": "side",
-      "text": "把乐队留作副业，商量固定排练",
-      "resultText": "你们减少场次，保留相聚。稳定收入和音乐可以在同一个人生里存在。",
+      "text": "给音乐留下空间，商量固定排练",
+      "resultText": "你们减少场次，商量固定排练。音乐和相聚留了下来，其他生活安排也有了空间。",
       "effects": {
         "money": -100,
         "happiness": 4,
@@ -1132,7 +1135,7 @@ EVENTS.push(
         "乐队作为副业"
       ],
       "removeTags": [],
-      "historyText": "你们减少场次，保留相聚。稳定收入和音乐可以在同一个人生里存在。",
+      "historyText": "你们减少场次，商量固定排练。音乐和相聚留了下来，其他生活安排也有了空间。",
       "importance": 2,
       "cashReason": "排练准备费用"
     }
@@ -1164,6 +1167,9 @@ EVENTS.push(
     ],
     "tagsAll": [
       "认真玩过乐队"
+    ],
+    "tagsNone": [
+      "乐队暂别"
     ]
   },
   "description": "群聊里的日程越来越难重合。没人变坏，几个人的生活只是长出了不同的安排。",
@@ -1187,8 +1193,8 @@ EVENTS.push(
     },
     {
       "id": "end",
-      "text": "认真结束这一段，让工作换方向",
-      "resultText": "大家说好不用把告别叫失败。你进入普通岗位，乐器可以留在家里。",
+      "text": "认真结束这一段乐队合作",
+      "resultText": "大家说好不用把告别叫失败。你们结束了这段合作，乐器和一起演奏过的记忆都留了下来。",
       "effects": {
         "autonomy": 4,
         "stress": -4
@@ -1196,21 +1202,9 @@ EVENTS.push(
       "addTags": [
         "乐队暂别"
       ],
-      "removeTags": [
-        "认真玩过乐队",
-        "特殊职业在岗"
-      ],
-      "historyText": "大家说好不用把告别叫失败。你进入普通岗位，乐器可以留在家里。",
-      "importance": 3,
-      "stateChanges": {
-        "work": {
-          "status": "employed",
-          "careerType": "general",
-          "level": 1,
-          "workStyle": "balanced"
-        }
-      },
-      "identity": "普通工作者"
+      "removeTags": [],
+      "historyText": "大家说好不用把告别叫失败。你们结束了这段合作，乐器和一起演奏过的记忆都留了下来。",
+      "importance": 3
     }
   ]
 },

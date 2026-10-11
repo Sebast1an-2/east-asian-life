@@ -77,7 +77,7 @@ EVENTS.push(
   "category": "random",
   "eventTags": [
     "晚年",
-    "生活"
+    "劳动"
   ],
   "priority": 0,
   "weight": 3,
@@ -204,7 +204,7 @@ EVENTS.push(
   "category": "random",
   "eventTags": [
     "晚年",
-    "生活"
+    "日常"
   ],
   "priority": 0,
   "weight": 5,
@@ -257,7 +257,7 @@ EVENTS.push(
   "category": "random",
   "eventTags": [
     "晚年",
-    "生活"
+    "健康"
   ],
   "priority": 0,
   "weight": 3,
@@ -319,7 +319,7 @@ EVENTS.push(
   "category": "random",
   "eventTags": [
     "晚年",
-    "生活"
+    "兴趣"
   ],
   "priority": 0,
   "weight": 3,
@@ -413,7 +413,7 @@ EVENTS.push(
   "category": "random",
   "eventTags": [
     "晚年",
-    "生活"
+    "朋友"
   ],
   "priority": 0,
   "weight": 3,
@@ -485,7 +485,7 @@ EVENTS.push(
   "category": "random",
   "eventTags": [
     "晚年",
-    "生活"
+    "关系"
   ],
   "priority": 0,
   "weight": 3,
@@ -539,7 +539,7 @@ EVENTS.push(
   "category": "random",
   "eventTags": [
     "晚年",
-    "生活"
+    "亲子"
   ],
   "priority": 0,
   "weight": 3,
@@ -905,7 +905,7 @@ EVENTS.push(
     {
       "id": "rest",
       "text": "减少一个安排，给休息付出实际时间",
-      "resultText": "你推迟了一件事，花一点钱安排真正的休息。休息终于不只是待办事项的最后一行。",
+      "resultText": "你推迟了一件事，为休息花了一点钱，也留出了实际的时间。休息终于不只是待办事项的最后一行。",
       "effects": {
         "stress": -12,
         "health": 4,
@@ -915,7 +915,7 @@ EVENTS.push(
         "为休息让出时间"
       ],
       "removeTags": [],
-      "historyText": "你推迟了一件事，也少赚一点。休息终于不只是待办事项的最后一行。",
+      "historyText": "你推迟了一件事，为休息花了一点钱，也留出了实际的时间。休息终于不只是待办事项的最后一行。",
       "importance": 2,
       "cashReason": "休息活动费用"
     },
